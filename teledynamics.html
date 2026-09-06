@@ -4,17 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>teledynamics — B2B Commerce Experience · Chris Lindenmayer</title>
-  <meta name="description" content="Teledynamics: a B2B commerce experience that lets telecom resellers find, price and order equipment.">
+  <meta name="description" content="Envision — a virtual design center that lets homebuyers configure and visualise their new home's finishes before it is built.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="site-nav.js" defer></script>
+  <!-- NOT deferred: with defer, customElements.define runs only after the
+       document is parsed, so <site-nav> stays an unstyled unknown element
+       with nothing to paint — the bar was absent on every load, and most
+       visible coming back from a project page. Registering it during head
+       parsing upgrades the element the moment it is parsed, before first
+       paint. It is a 4KB local file, so the parser cost is negligible. -->
+  <script src="site-nav.js"></script>
 
   <style>
     /* Palette and type lifted from index.html so the two pages read as
-       one site: same Brier display face, same Inter, same cream on the
-       same near-black ground. */
+       one site: same Brier display face, same Inter, now dark ink on the
+       landing page's own beige. */
     @font-face {
       font-family: 'Brier';
       src: url('Support/Brier-Regular.otf') format('opentype');
@@ -24,11 +30,20 @@
     }
 
     :root {
-      --ground:    #170B05;   /* page ground, matches the portfolio backdrop */
-      --cream:     #DFCFB7;   /* body + display type */
-      --cream-dim: #9A8A76;   /* secondary type */
-      --terra:     #C64921;   /* accent, matches SYSTEMS */
-      --rule:      #33241B;   /* hairlines */
+      /* Light theme. The ground is the EXACT beige of the landing page's
+         hero, because the work slider's exit transition slides a panel of
+         that colour up behind itself and then hands over to this page: if
+         the two differed at all the handover would read as a flash.
+         The ink values were chosen to hold the dark theme's own contrast
+         relationships rather than by eye, so the hierarchy is unchanged:
+         secondary was 5.77:1 against the old ground and is 5.82:1 here,
+         and the hairline was 1.30:1 and is 1.38:1. */
+      --ground:    #EEE9DF;   /* landing-page hero beige */
+      --ink:       #40332D;   /* body + display type      10.0:1 */
+      --ink-dim:   #5E584F;   /* secondary type            5.8:1 */
+      --terra:     #A13D1F;   /* accent; the lighter #C64921 was 3.97:1 here,
+                                 under AA for the 12px eyebrows */
+      --rule:      #D2C7B4;   /* hairlines */
       /* Fixed, not vw-based, so the text sits on an exact number. Narrow
          viewports override this in the media query below. The nav does NOT
          use this — it has its own offsets matching index.html. */
@@ -77,7 +92,7 @@
     body {
       margin: 0;
       background: var(--ground);
-      color: var(--cream);
+      color: var(--ink);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       font-weight: 400;
       -webkit-font-smoothing: antialiased;
@@ -114,15 +129,20 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--cream-dim);
+      /* Same treatment as the section eyebrows (.section h2), so the link
+         reads as part of that labelling system rather than as body text. */
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--terra);
       text-decoration: none;
       transition: color 200ms ease;
       z-index: 3;
     }
-    .mast__back:hover { color: var(--cream); }
-    .mast__back svg { inline-size: 18px; block-size: 18px; }
+    .mast__back:hover { color: var(--ink); }
+    /* Sized to the 12px cap height rather than the old 14px text. */
+    .mast__back svg { inline-size: 14px; block-size: 14px; }
     .mast__title {
       /* The letters are split into inline-block spans for the intro, which
          makes the word breakable — inside the ~380px text column every
@@ -141,7 +161,8 @@
     /* Hidden until the intro runs; .no-js guards against them never
        appearing if the script fails. */
     .js .mast__sub,
-    .js .mast__meta { opacity: 0; }
+    .js .mast__meta,
+    .js .mast__back { opacity: 0; }
 
     .mast__title {
       /* Above the image. .shot is absolutely positioned and comes after
@@ -152,9 +173,7 @@
       font-weight: 400;                 /* Brier ships 400 only */
       /* Sized to FIT the text column: at 148px "envision" measured 536px
          against a 374px column, so it ran across the image. */
-      /* teledynamics is half again as long as envision, so the same
-         clamp ran it across the image. Sized to fit the SAME column. */
-      font-size: clamp(26px, 4.2vw, 60px);
+      font-size: clamp(44px, 7.2vw, 104px);
       line-height: 1;
       margin: 0 0 20px;
     }
@@ -163,7 +182,7 @@
       line-height: 1.45;
       max-width: 34ch;
       margin: 0;
-      color: var(--cream);
+      color: var(--ink);
     }
     /* Stacked as a column, left aligned, in the space beside the image —
        and anchored 96px up from the BOTTOM OF THE VIEWPORT rather than
@@ -189,7 +208,7 @@
       font-weight: 600;
       letter-spacing: 0.09em;
       text-transform: uppercase;
-      color: var(--cream-dim);
+      color: var(--ink-dim);
       margin: 0 0 6px;
     }
     .mast__meta dd { margin: 0; font-size: 16px; }
@@ -226,7 +245,7 @@
       inline-size: var(--shot-w);
       border-radius: 12px;
       overflow: hidden;
-      background: #1C1310;
+      background: #E3DCCE;
       /* Starts closed. The intro GROWS this box downward (see the script
          at the end of the body) with the image pinned inside, so the photo
          is progressively uncovered rather than squashed. Height is used
@@ -323,6 +342,13 @@
       padding-block-start: calc(0.362 * clamp(18px, 1.55vw, 25px) - 4.9px);
     }
 
+    /* Paired with BODY copy rather than the display headline. Line-height
+       1.6 puts its cap lower in the box than the headline's 1.3, so the
+       label needs its own offset; same derivation as the other two. */
+    .brief .brief__eyebrow--body {
+      padding-block-start: calc(0.437 * clamp(17px, 1.35vw, 21px) - 4.9px);
+    }
+
     /* The question runs unboxed. With the outline gone the horizontal
        padding has to go with it, or the question alone would sit inset
        from the spine every other block hangs on. */
@@ -343,6 +369,10 @@
     .brief__headline {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       font-weight: 500;
+      /* No widows: pulls a word down rather than leaving the last line a
+         single orphan. Width-independent, unlike a hardcoded &nbsp; —
+         this headline reflows across the whole clamp. */
+      text-wrap: pretty;
       font-size: clamp(26px, 2.9vw, 44px);
       line-height: 1.3;
       text-transform: uppercase;
@@ -352,6 +382,23 @@
       margin: 0 0 clamp(22px, 3vh, 36px);
     }
     .brief__answer p { max-inline-size: 58ch; }
+
+    /* An inline link inside a paragraph. Underlined rather than coloured, so
+       it stays part of the sentence's rhythm; the offset keeps the rule off
+       the descenders. */
+    .inline-link {
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+      text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+      transition: text-decoration-color 200ms ease, color 200ms ease;
+    }
+    .inline-link:hover,
+    .inline-link:focus-visible {
+      color: var(--terra);
+      text-decoration-color: currentColor;
+    }
 
     .brief__cta {
       display: inline-flex;
@@ -366,7 +413,7 @@
       letter-spacing: 0.09em;
       text-transform: uppercase;
       text-decoration: none;
-      color: var(--cream);
+      color: var(--ink);
       transition: border-color 240ms ease, color 240ms ease;
     }
     .brief__cta:hover,
@@ -375,6 +422,120 @@
     .brief__cta:hover .brief__arrow,
     .brief__cta:focus-visible .brief__arrow { transform: translate(2px, -2px); }
 
+
+    /* ── Product shot: grows as it rises ───────────────────────────
+       Starts at --grow-from and widens until its OUTER edge lands on the
+       page margin, reaching full width around the middle of the viewport.
+       The 8px white border is that outer edge, so the border is what the
+       96px margin holds and the image itself sits 8px further in. Width is
+       written by script; the max-inline-size is the same expression, so a
+       viewport narrower than the start width is capped by CSS rather than
+       relying on the script having run. */
+    .growsec {
+      padding: clamp(72px, 14vh, 160px) 0 0;   /* no inline padding: the
+        figure's own width is measured from the viewport, not from a column */
+    }
+    .grow {
+      --grow-from: 1000px;
+      inline-size: var(--grow-from);
+      max-inline-size: calc(100vw - var(--page-pad) * 2);
+      margin-inline: auto;
+      /* No frame: 12px is what the image's own corner used to resolve to
+         inside the old 8px white border (20 - 8), so the curve is unchanged
+         now that the border is gone. */
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+      will-change: inline-size;
+    }
+    .grow img { display: block; inline-size: 100%; block-size: auto; }
+
+    @media (prefers-reduced-motion: reduce) {
+      /* No growth: it arrives at its full size. */
+      .grow { inline-size: calc(100vw - var(--page-pad) * 2); }
+    }
+
+    /* ── Three-up row ──────────────────────────────────────────────
+       Three 2:3 frames spanning the page margins. Each rises and scales
+       into place as the row comes into view, and the three are STAGGERED so
+       their moves overlap in flight rather than queueing one after another:
+       the second starts while the first is still settling. */
+    /* Bottom padding as well as top: the sections that follow carry only a
+       top padding, so without this the three-up sat too close to the copy
+       beneath it. Scoped here rather than raised on .section, which would
+       have loosened every section boundary on the page. */
+    .trio { padding: clamp(72px, 14vh, 160px) var(--page-pad) clamp(64px, 11vh, 128px); }
+    .trio__row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(28px, 3.2vw, 52px);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .trio__frame {
+      margin: 0;
+      aspect-ratio: 2 / 3;
+      border-radius: 16px;
+      overflow: hidden;
+      /* Holds the frame's shape before its image is in place, so the row
+         never reflows when the assets land. */
+      background: #E3DCCE;
+      opacity: 0;
+      transform: translateY(56px) scale(0.94);
+      transform-origin: 50% 100%;      /* it grows UP from its own base */
+      transition: opacity 640ms cubic-bezier(.22,.72,.38,1),
+                  transform 880ms cubic-bezier(.22,.72,.38,1);
+    }
+    .trio__cell.is-in .trio__frame { opacity: 1; transform: none; }
+    /* The overlap. 160ms is well inside the 880ms move, so all three are
+       travelling together for most of it. */
+    .trio__cell:nth-child(2) .trio__frame { transition-delay: 160ms; }
+    .trio__cell:nth-child(3) .trio__frame { transition-delay: 320ms; }
+    /* The third cell is copy, not an image. It keeps the 2:3 box so the row
+       still reads as three equal columns, but loses the placeholder fill —
+       that existed only to hold an image's shape before it loaded. Centred
+       in the box vertically, ranged left. */
+    .trio__frame--text {
+      background: none;
+      display: flex;
+      /* column, so more than one paragraph stacks: as a row the second
+         would sit BESIDE the first rather than under it. */
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 1.1em;                     /* paragraph spacing; the p's own
+                                         margin stays 0 */
+      /* Held off the image beside it. Applied to the TEXT cell rather than
+         widening the row's gap, so the two image frames keep their own
+         spacing and the row still lands on the 96px margins. */
+      padding-inline-start: clamp(24px, 2.8vw, 48px);
+      /* overflow is hidden on .trio__frame to crop images; the copy must be
+         allowed to breathe past the box on a short/narrow window rather
+         than being silently cut off. */
+      overflow: visible;
+    }
+    .trio__frame--text p {
+      margin: 0;
+      text-align: left;
+      font-size: clamp(15px, 1.05vw, 17px);
+      line-height: 1.65;
+      color: var(--ink-dim);
+    }
+
+    .trio__frame img {
+      display: block;
+      inline-size: 100%;
+      block-size: 100%;
+      object-fit: cover;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .trio__frame { opacity: 1; transform: none; transition: none; }
+    }
+    @media (max-width: 860px) {
+      .trio__row { grid-template-columns: minmax(0, 1fr); }
+      .trio__cell .trio__frame { transition-delay: 0ms; }
+    }
 
     .foot {
       margin-block-start: clamp(72px, 12vh, 140px);
@@ -386,7 +547,7 @@
       align-items: center;
       justify-content: space-between;
       gap: var(--page-pad);
-      color: var(--cream-dim);
+      color: var(--ink-dim);
       font-size: 14px;
     }
     /* No rule under it. The link carries its own arrow and sits alone above
@@ -397,7 +558,7 @@
       transition: color 200ms ease;
     }
     .foot a:hover,
-    .foot a:focus-visible { color: var(--cream); }
+    .foot a:focus-visible { color: var(--ink); }
 
     /* Below this the two-column split leaves the image a useless sliver,
        so it stacks: copy first, image full width beneath it. */
@@ -452,18 +613,18 @@
       </a>
 
       <h1 class="mast__title">teledynamics</h1>
-      <p class="mast__sub">B2B Commerce Experience</p>
+      <p class="mast__sub">Virtual Design Center</p>
 
       <dl class="mast__meta">
-        <div><dt>Role</dt><dd>TO CONFIRM</dd></div>
-        <div><dt>Focus</dt><dd>B2B commerce, reseller experience</dd></div>
+        <div><dt>Role</dt><dd>Lead Product Designer</dd></div>
+        <div><dt>Focus</dt><dd>Design system, configurator</dd></div>
         <div><dt>Platform</dt><dd>Web</dd></div>
       </dl>
     </div>
 
     <figure class="shot">
-      <img src="Case%20Studies/Teledynamics/thumb.png"
-           alt="Teledynamics: a blue RJ45 ethernet patch cable connector">
+      <img src="envision/Developer%20Center/kitchen%20designs/kitchen-styles.webp"
+           alt="Envision kitchen design — white shaker cabinets with a marble waterfall island">
     </figure>
     </div><!-- /.hero -->
 
@@ -473,17 +634,23 @@
       <div class="brief">
         <h2 class="brief__eyebrow brief__eyebrow--ask">The challenge</h2>
         <div class="brief__ask">
-          <p>PLACEHOLDER: the challenge this project set out to answer, in one
-             sentence, phrased as a question.</p>
+          <p>How do we transform an outdated, fragmented home design process into a
+             simpler, more scalable digital experience?</p>
         </div>
 
         <h2 class="brief__eyebrow">The objective</h2>
         <div class="brief__answer">
-          <h3 class="brief__headline">PLACEHOLDER: the objective in a single
-            sentence, set as the display headline.</h3>
-          <p>PLACEHOLDER: two or three sentences on what was built, who it was for,
-             and what it changed, following the shape of the envision brief.</p>
-          <a class="brief__cta" href="#" target="_blank" rel="noopener">
+          <h3 class="brief__headline">A simpler way for homebuyers to visualize and
+            select finishes, while giving builders a lower-cost alternative to
+            in-person design centers.</h3>
+          <p>I created a white-label platform that lets
+             buyers explore finishes, visualize their selections, and move through
+             the customization process remotely. For builders, it creates a more
+             efficient alternative to costly in-person design centers. A scalable
+             design system and token architecture make it possible to support
+             different brands without rebuilding the experience from scratch.</p>
+          <a class="brief__cta" href="https://envision-4tq.pages.dev"
+             target="_blank" rel="noopener">
             View website <span class="brief__arrow" aria-hidden="true">↗</span>
           </a>
         </div>
@@ -492,10 +659,113 @@
 
 
 
+    <!-- The product itself, growing into the page as it rises. -->
+    <section class="growsec">
+      <figure class="grow">
+        <img src="envision/Developer%20Center/kitchen%20designs/design%20center.png"
+             alt="The Envision design center: a kitchen rendering beside panels for choosing cabinets, countertops and flooring">
+      </figure>
+    </section>
+
+    <!-- Process. Same rail and spine as the brief: the label names the
+         section from the rail, the copy runs in the content column. -->
+    <section class="section section--brief">
+      <div class="brief">
+        <h2 class="brief__eyebrow brief__eyebrow--body">From prototype to system</h2>
+        <div class="brief__answer">
+          <p>I started by building the experience as a working prototype, using
+             AI-assisted tools to move quickly through iterations. That let me test
+             the product in context and see which patterns were actually worth
+             standardizing. Those patterns started to define the foundations of the
+             design system.</p>
+          <p>Those foundations became a token architecture in <a class="inline-link"
+             href="https://www.figma.com/design/ZnnaoZcKjKhDxXFvfHr6fA/Envision-Design-System"
+             target="_blank" rel="noopener">Figma</a>, organized
+             across primitive, semantic, and component layers. I used Style
+             Dictionary to transform the tokens into CSS and TypeScript, creating a
+             direct connection between the design system and the component library.
+             I then built and tested the components in <a class="inline-link"
+             href="https://envision-storybook.pages.dev"
+             target="_blank" rel="noopener">Storybook</a>, giving developers
+             one place to find, review, and implement them. From there, I focused
+             on how the system would be documented and governed so it could grow
+             without losing consistency.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Three-up. Frames are empty until the three images are chosen; the
+         2:3 box is held by the frame itself so nothing reflows when they
+         land. Add each image as a child <img> and it will be cropped to
+         fill. -->
+    <section class="trio">
+      <ul class="trio__row" role="list">
+        <li class="trio__cell"><figure class="trio__frame">
+          <img src="Case%20Studies/Envision%20Case%20Study/design-thumb2.jpg"
+               alt="The kitchen model in SketchUp, its outliner showing every cabinet, appliance and hardware component named to a strict convention">
+        </figure></li>
+        <li class="trio__cell"><figure class="trio__frame">
+          <img src="Case%20Studies/Envision%20Case%20Study/design-thumb1.jpg"
+               alt="The Lighting Studio panel: exposure, ambient, hemisphere and sun controls tuning how the room renders">
+        </figure></li>
+        <li class="trio__cell"><figure class="trio__frame trio__frame--text">
+          <p>I applied the same systems thinking to the 3D models, creating a
+             consistent naming structure in SketchUp so cabinets, surfaces,
+             fixtures, and materials could be identified and mapped to finishes in a
+             predictable way across builders, floor plans, and home models.</p>
+          <p>I also built a custom lighting studio to keep the lighting consistent
+             across any 3D system.</p>
+        </figure></li>
+      </ul>
+    </section>
+
+    <!-- Governance. Same rail and spine as the brief and the process copy. -->
+    <section class="section section--brief">
+      <div class="brief">
+        <h2 class="brief__eyebrow brief__eyebrow--body">System governance</h2>
+        <div class="brief__answer">
+          <p>I built a dedicated Design Center to make the system easier to
+             understand and use. It brings together the foundations, components,
+             implementation guidance, and governance in one place so the system can
+             scale without losing consistency.</p>
+          <a class="brief__cta"
+             href="envision-design-system/packages/developer-center/dist/index.html"
+             target="_blank" rel="noopener">
+            View the Design Center <span class="brief__arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- The design center, growing in the same way as the product shot. -->
+    <section class="growsec">
+      <figure class="grow">
+        <img src="Case%20Studies/Envision%20Case%20Study/developer-center.png"
+             alt="The Envision design center: system principles, design language, components and governance, with links out to Storybook, Figma and GitHub">
+      </figure>
+    </section>
+
+    <!-- Outcome. Same rail and spine as the process and governance copy. -->
+    <section class="section section--brief">
+      <div class="brief">
+        <h2 class="brief__eyebrow brief__eyebrow--body">The outcome</h2>
+        <div class="brief__answer">
+          <p>A product like Envision would have once required a much larger team,
+             budget, and timeline to even prove out. New tools changed that
+             equation. I was able to take the idea from concept to working product,
+             then build the design system and infrastructure around it. More
+             importantly, it let me push product thinking much further before
+             engineering investment was required, so decisions could be tested,
+             refined, and proven with far less risk.</p>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer class="foot">
     <a href="index.html#work">← Back to work</a>
+    <a href="teledynamics.html">Teledynamics →</a>
   </footer>
 
   <script>
@@ -530,9 +800,12 @@
       var shot  = document.querySelector('.shot');
       var img   = shot && shot.querySelector('img');
 
+      var back = document.querySelector('.mast__back');
+
       function showAll() {
         if (sub)  sub.style.opacity = 1;
         if (meta) meta.style.opacity = 1;
+        if (back) back.style.opacity = 1;
         if (title) title.style.transform = '';
         if (shot) { shot.classList.add('is-in'); }
       }
@@ -661,6 +934,11 @@
           }
 
           var lines = [];
+          // One row, not word-split: the link holds an <svg> alongside its
+          // text, and wordsByLine() clears textContent, which would drop
+          // the arrow. It sorts into the sequence by position like any
+          // other line — it sits above the title, so it leads.
+          if (back) { back.style.opacity = 1; lines.push([back]); }
           if (sub) lines = lines.concat(wordsByLine(sub));
           if (meta) {
             [].forEach.call(meta.querySelectorAll('dt, dd'), function (el) {
@@ -689,9 +967,11 @@
               );
               a.finished.then(function () {
                 a.cancel();
-                w.style.opacity = '';
+                // The back link is hidden by CSS until the intro runs, so
+                // clearing its inline opacity would send it back to 0.
+                w.style.opacity = (w === back) ? 1 : '';
                 w.style.transform = '';
-              }).catch(function () { w.style.opacity = ''; });
+              }).catch(function () { w.style.opacity = (w === back) ? 1 : ''; });
             });
           });
         }).catch(function () {});
@@ -746,7 +1026,6 @@
                                { duration: xFade, easing: EASE, fill: 'forwards' });
           });
         }
-        var back = document.querySelector('.mast__back');
         if (back) back.animate([{ opacity: 1 }, { opacity: 0 }],
                                { duration: xFade, easing: EASE, fill: 'forwards' });
 
@@ -799,6 +1078,123 @@
         exitToSlider(link.getAttribute('href'));
       }, true);
     })();
+    // ─── Product shot growth ────────────────────────────────────────
+    // Width is driven by where the figure sits in the viewport rather than
+    // by a fixed scroll distance, so it behaves the same wherever the
+    // section lands and at any window height. Progress is 0 when its top
+    // edge is at the bottom of the viewport and 1 when that edge reaches
+    // the middle, which is where it finishes growing.
+    (function () {
+      var figs = document.querySelectorAll('.grow');
+      if (!figs.length) return;
+      var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function fullWidth() {
+        var pad = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--page-pad')
+        ) || 96;
+        return document.documentElement.clientWidth - pad * 2;
+      }
+      function startWidth(fig) {
+        var from = parseFloat(getComputedStyle(fig).getPropertyValue('--grow-from')) || 1000;
+        // Never start wider than it can end: on a narrow window the growth
+        // would run backwards. Read per figure, so each can set its own
+        // --grow-from without the others inheriting it.
+        return Math.min(from, fullWidth());
+      }
+
+      // Smootherstep. Zero rate of change at BOTH ends, so there is no edge
+      // to see at either one: it eases in from nothing and settles into the
+      // margin. A quintic ease-out was tried and front-loaded far too much,
+      // which fights the lead-in below (it would be most of the way grown
+      // before it had finished entering).
+      function ease(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+
+      // Growth STARTS below the fold, so the figure is already in motion by
+      // the time it is on screen rather than sitting inert and then setting
+      // off. LEAD is that head start, as a fraction of the viewport height.
+      var LEAD = 0.15;
+
+      // Where growth FINISHES, as the top edge's distance down the
+      // viewport: 1/3 from the top, i.e. two thirds of the way up.
+      var END = 1 / 3;
+
+      // Where the width SHOULD be for the current scroll position.
+      // p = 0 when the top edge is LEAD below the fold, 1 when it reaches
+      // END down the viewport. The span is the distance between those two
+      // points, so moving END re-times the growth without touching LEAD.
+      function targetWidth(fig) {
+        var vh = window.innerHeight;
+        var top = fig.getBoundingClientRect().top;
+        var p = (vh * (1 + LEAD) - top) / (vh * (1 + LEAD - END));
+        p = p < 0 ? 0 : p > 1 ? 1 : p;
+        var from = startWidth(fig), to = fullWidth();
+        return from + (to - from) * ease(p);
+      }
+
+      // The rendered width CHASES that target instead of being set to it.
+      // Curve shape alone could not fix the clunkiness: mapped straight to
+      // the wheel, every pixel of scroll is a pixel of growth, so the motion
+      // inherits the scroll's own jitter and stepping. Following at a fixed
+      // fraction per frame smooths that out and lets it settle under its own
+      // momentum after the scroll stops. Higher CHASE = tighter tracking.
+      var CHASE = 0.10;
+
+      // Each figure keeps its OWN chase position and rAF handle. Sharing one
+      // would make two shots on the page pull against each other, since they
+      // are at different scroll positions and want different widths.
+      function wire(fig) {
+        var cur = null, raf = 0;
+        function frame() {
+          raf = 0;
+          var t = targetWidth(fig);
+          if (cur === null) cur = t;
+          cur += (t - cur) * CHASE;
+          if (Math.abs(t - cur) < 0.3) cur = t;        // settle, stop chasing
+          fig.style.inlineSize = (Math.round(cur * 10) / 10) + 'px';
+          if (cur !== t) raf = requestAnimationFrame(frame);
+        }
+        cur = targetWidth(fig);
+        fig.style.inlineSize = (Math.round(cur * 10) / 10) + 'px';
+        return {
+          kick:  function () { if (!raf) raf = requestAnimationFrame(frame); },
+          reset: function () { cur = null; }
+        };
+      }
+
+      if (reduce) {
+        [].forEach.call(figs, function (f) { f.style.inlineSize = fullWidth() + 'px'; });
+        return;
+      }
+      var wired = [].map.call(figs, wire);
+      function kickAll()  { wired.forEach(function (w) { w.kick(); }); }
+      function resetAll() { wired.forEach(function (w) { w.reset(); }); kickAll(); }
+      addEventListener('scroll', kickAll, { passive: true });
+      addEventListener('resize', resetAll);
+    })();
+
+    // ─── Three-up reveal ────────────────────────────────────────────
+    // One observer for the whole row: the frames are staggered by CSS
+    // transition-delay, so they only need to be told the row has arrived.
+    // Triggered a little before the row's top edge reaches the fold, so the
+    // first frame is already moving as it comes on screen.
+    (function () {
+      var cells = document.querySelectorAll('.trio__cell');
+      if (!cells.length) return;
+      if (!('IntersectionObserver' in window)) {
+        [].forEach.call(cells, function (c) { c.classList.add('is-in'); });
+        return;
+      }
+      var io = new IntersectionObserver(function (entries, obs) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          [].forEach.call(cells, function (c) { c.classList.add('is-in'); });
+          obs.disconnect();
+        });
+      }, { rootMargin: '0px 0px -12% 0px' });
+      io.observe(document.querySelector('.trio__row'));
+    })();
+
   </script>
 </body>
 </html>

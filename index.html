@@ -22,7 +22,9 @@
     (function () {
       var m = /^#work(?:-(\d+))?$/.exec(location.hash || '');
       if (!m) return;
-      var THEME = ['#EEE9DF', '', '', ''];        // keep in step with PROJECT_THEME
+      // Indexed by SLIDE; PROJECT_THEME above is keyed by href. Both list
+      // the same colours and must be updated together.
+      var THEME = ['#EEE9DF', '#EEE9DF', '', ''];
       var i = m[1] ? parseInt(m[1], 10) : 0;
       var root = document.documentElement;
       var col = THEME[i] || '#170B05';
@@ -916,15 +918,6 @@
       pointer-events: none;
       z-index: 2;
     }
-    /* The last word set in the display face and the light cream, so the
-       phrase resolves on the word it is about. Brier ships 400 only, so the
-       weight drops from the surrounding 700 rather than being faked; the
-       parent's uppercase is inherited, and Brier carries a full set of caps. */
-    .hero-side-text__next {
-      font-family: 'Brier', 'Inter', sans-serif;
-      font-weight: 400;
-      color: #DFCFB7;
-    }
     .hero-side-text--left  { right: calc(50% + 15.5vh + 24px); }
     .hero-side-text--right { left:  calc(50% + 15.5vh + 24px); }
 
@@ -1182,7 +1175,7 @@
            scrolls upward with the circle after the hero pin releases.
            Animated in via a letterfall when the scroll-up begins. -->
       <div class="hero-side-text hero-side-text--left"  aria-hidden="true">Combining&nbsp;AI&nbsp;and&nbsp;Craft</div>
-      <div class="hero-side-text hero-side-text--right" aria-hidden="true">To&nbsp;Shape&nbsp;What&rsquo;s&nbsp;<span class="hero-side-text__next">Next</span></div>
+      <div class="hero-side-text hero-side-text--right" aria-hidden="true">To&nbsp;Shape&nbsp;What&rsquo;s&nbsp;Next</div>
 
       <!-- The hero scene that scales down as one composited unit -->
       <div class="hero-scene" id="hero-scene">
@@ -1973,7 +1966,7 @@
       // Lifts the whole composition off the bottom of the viewport. Kept
       // out of the height maths below on purpose: this MOVES the block,
       // it does not shrink it, so the Figma 640 is preserved.
-      var ACC_RAISE = 152;
+      var ACC_RAISE = 136;   // 152 - 16: the composition sits 16px lower
       // The title and sub-line now sit INSIDE the composition, so this is
       // their inset from its bottom-left / bottom-right corners rather
       // than a gap above it.
@@ -2413,7 +2406,10 @@
         // The value MUST equal the destination page's own background exactly.
         // envision.html's --ground is this same beige; if the two drifted the
         // handover would read as the flash this is here to remove.
-        var PROJECT_THEME = { 'envision.html': '#EEE9DF' };
+        var PROJECT_THEME = {
+          'envision.html': '#EEE9DF',
+          'teledynamics.html': '#EEE9DF'
+        };
 
         // Whether a theme needs DARK nav ink is derived from the colour, so
         // adding a project to PROJECT_THEME is the only step: a light ground
@@ -3071,7 +3067,15 @@
             // the composition is still settling.
             if (interactTimer) interactTimer.kill();
             interactTimer = gsap.delayedCall(1, function () {
-              if (ACC.panels[0]) ACC.panels[0].classList.add('is-interactive');
+              // EVERY panel that carries a link, not just the first: which
+              // one is actually clickable is decided by .is-open, so this
+              // only says "the composition has settled". Arming panel 0
+              // alone left the other projects permanently inert.
+              ACC.panels.forEach(function (pn) {
+                if (pn.querySelector('.acc__overlay[href]')) {
+                  pn.classList.add('is-interactive');
+                }
+              });
               subArmed = true;
               var sw = document.querySelector('.acc-sub');
               if (sw && subInner && subInner.getAttribute('href')) sw.classList.add('is-interactive');
@@ -3085,7 +3089,7 @@
             if (subTimer) { subTimer.kill(); subTimer = null; }
             if (interactTimer) { interactTimer.kill(); interactTimer = null; }
             if (subAnim) subAnim.pause(0);
-            if (ACC.panels[0]) ACC.panels[0].classList.remove('is-interactive');
+            ACC.panels.forEach(function (pn) { pn.classList.remove('is-interactive'); });
             subArmed = false;
             var sw2 = document.querySelector('.acc-sub');
             if (sw2) sw2.classList.remove('is-interactive');

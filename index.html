@@ -1,0 +1,3961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chris Lindenmayer — Portfolio</title>
+
+  <!-- ── Returning from a project page ───────────────────────────────
+       Runs before ANY paint, deliberately ahead of the stylesheet and the
+       libraries. The return handler further down jumps the scroll to the
+       slide the reader left from, but it cannot run until GSAP has loaded
+       and ScrollTrigger has refreshed, and the browser paints the top of
+       the document long before that: the reader saw a flash of the landing
+       hero on the way back. This covers the document until that jump has
+       happened, in the colour of the page they are arriving FROM, so the
+       return continues that page instead of interrupting it.
+
+       The colours mirror PROJECT_THEME in the exit transition. A slide with
+       no theme falls back to the page's own ground, which still hides the
+       hero; it simply has nothing to carry across. -->
+  <script>
+    (function () {
+      var m = /^#work(?:-(\d+))?$/.exec(location.hash || '');
+      if (!m) return;
+      var THEME = ['#EEE9DF', '', '', ''];        // keep in step with PROJECT_THEME
+      var i = m[1] ? parseInt(m[1], 10) : 0;
+      var root = document.documentElement;
+      var col = THEME[i] || '#170B05';
+      root.style.setProperty('--return-veil', col);
+      // Same derivation as isLight() in the exit transition. Duplicated
+      // rather than shared because this runs before any module exists.
+      var h = col.replace('#', '');
+      var lin = [0, 2, 4].map(function (k) {
+        var v = parseInt(h.substr(k, 2), 16) / 255;
+        return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      var light = (0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]) > 0.4;
+      root.dataset.returnInk = light ? '1' : '0';
+      var st = document.createElement('style');
+      st.textContent =
+        'html.is-returning body{visibility:hidden}' +
+        // The nav is exempt from the cover: it is common to both pages, so
+        // hiding it here would be the disappear/reappear the transition is
+        // meant to avoid. It stays put and only its ink changes, in step
+        // with the cover, so it is lifted just above it.
+        'html.is-returning site-nav{visibility:visible;z-index:2147483001}' +
+        (light ? 'html.is-returning site-nav{--nav-over:1}' : '') +
+        // It SLIDES back down rather than fading: the exit raised this
+        // panel, so the return lowers the same panel. The numbers are the
+        // exit's, mirrored. The rise is delay 100 / 680ms on
+        // cubic-bezier(.22,.72,.38,1), which within the 900ms slider move
+        // spans 100-780; reflected about that 900 it spans 120-800, and the
+        // ease is that curve's exact reverse: reflecting the control points
+        // through (1,1) gives cubic-bezier(.62,0,.78,.28). An ease-OUT going
+        // up therefore comes back as an ease-IN going down.
+        'html.is-returning::before{content:"";position:fixed;inset:0;' +
+          'z-index:2147483000;background:var(--return-veil);' +
+          'transform:translateY(0);' +
+          'transition:transform 680ms cubic-bezier(.62,0,.78,.28) 120ms}' +
+        'html.is-returning.is-clearing body{visibility:visible}' +
+        'html.is-returning.is-clearing::before{transform:translateY(100%)}';
+      root.appendChild(st);
+      root.classList.add('is-returning');
+      // Never strand the page behind the cover if the return handler does
+      // not run at all (no GSAP, a thrown error, reduced motion paths).
+      setTimeout(function () { root.classList.remove('is-returning', 'is-clearing'); }, 2500);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@900&display=swap" rel="stylesheet">
+  <!-- NOT deferred: with defer, customElements.define runs only after the
+       document is parsed, so <site-nav> stays an unstyled unknown element
+       with nothing to paint — the bar was absent on every load, and most
+       visible coming back from a project page. Registering it during head
+       parsing upgrades the element the moment it is parsed, before first
+       paint. It is a 4KB local file, so the parser cost is negligible. -->
+  <script src="site-nav.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="three.min.js"></script>
+  <script type="x-shader/x-vertex" id="wrapVertexShader">
+    attribute float size;
+    attribute vec3 color;
+    varying vec3 vColor;
+    void main() {
+      vColor = color;
+      vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+      gl_PointSize = size * ( 350.0 / - mvPosition.z );
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  </script>
+  <script type="x-shader/x-fragment" id="wrapFragmentShader">
+    varying vec3 vColor;
+    uniform sampler2D texture;
+    void main(){
+      vec4 textureColor = texture2D( texture, gl_PointCoord );
+      if ( textureColor.a < 0.3 ) discard;
+      vec4 color = vec4(vColor.xyz, 1.0) * textureColor;
+      gl_FragColor = color;
+    }
+  </script>
+  <style>
+    @font-face {
+      font-family: 'Brier';
+      src: url('Support/Brier-Regular.otf') format('opentype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #170B05;
+      color: #fff;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* Reserve scrollbar space so innerWidth is constant across the
+       whole document lifecycle. Without this, the scrollbar
+       appearing / disappearing during pinned-scroll cycles shifts
+       every element positioned with `left: 50%` (LC overlay, side
+       text) or flex-centered (.quote-block), producing the sporadic
+       horizontal snap when scrolling up and back down.
+       `scrollbar-gutter: stable` handles modern browsers; the
+       `overflow-y: scroll` fallback covers older ones. */
+    html {
+      scrollbar-gutter: stable;
+      overflow-y: scroll;
+    }
+
+    /* ─── TWO-LAYER NAV SYSTEM ─────────────────────────────────────
+       .nav-under  — fixed at viewport, white text, behind hero card.
+                     Revealed when the hero card shrinks.
+       .nav-over   — inside .hero-scene, dark text. Scales / is clipped
+                     with the hero card so it disappears off the top of
+                     the viewport as the card shrinks toward center.
+       Both nav layers contain identical content (brand + nav links)
+       with their text color scoped via the parent class. */
+    .nav-under,
+    .nav-over {
+      background: transparent !important;
+      pointer-events: none;
+    }
+    .nav-under > *,
+    .nav-over > * { pointer-events: auto; }
+
+    .nav-under {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 2; /* above the dark topo, below the hero card */
+    }
+
+    .nav-over {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 1000; /* fixed at viewport, above everything */
+      transform: none !important;
+    }
+
+    /* Color scoping: white inside .nav-under, dark inside .nav-over.
+       Both share the existing .hero-brand / .hero-nav positioning. */
+    .nav-under .hero-brand,
+    .nav-under .hero-nav,
+    .nav-under .hero-nav a { color: #FCFCFA !important; }
+
+    .nav-over .hero-brand,
+    .nav-over .hero-nav,
+    .nav-over .hero-nav a { color: #4A4A44 !important; }
+
+    /* ─── SCROLL-DRIVEN HERO TRANSITION ───────────────────────────────
+       .hero-transition is the scroll-controlled wrapper. ScrollTrigger
+       pins it for the duration of the transition; its child layers are
+       absolutely positioned and scaled, NOT independently sticky (that
+       was causing the jump in the previous version). */
+    main {
+      position: relative;
+      z-index: 2;
+      /* <main> (z2) is the catch-all hit target sitting above the
+         fixed dark-sphere backdrop (z1): wherever its decorative
+         sections are pointer-events:none, the cursor would still land
+         on <main> itself and never reach the sphere. Make the whole
+         content layer transparent to the cursor so it falls through
+         to the dark sphere; genuinely interactive elements re-enable
+         pointer-events on themselves (descendant auto overrides this,
+         so the hero sphere — set to auto by the scroll handler — and
+         all links/buttons still work). */
+      pointer-events: none;
+    }
+    main a,
+    main button,
+    main [role="button"],
+    main input,
+    main textarea,
+    main select,
+    main label {
+      pointer-events: auto;
+    }
+
+    .hero-transition {
+      position: relative;
+      height: 100vh;     /* GSAP pin: true creates the extra scroll distance */
+      background: transparent;
+      overflow: clip;
+      z-index: 2;
+      isolation: isolate;
+      /* Transparent decorative wrapper sitting above the fixed
+         dark-sphere backdrop (z1). Let the cursor pass THROUGH the
+         empty surround to that sphere so its Framer mouseover works.
+         The hero sphere + real links/buttons re-enable pointer-events
+         on themselves, so a child set to auto is still hit-testable
+         even though this ancestor is none. */
+      pointer-events: none;
+    }
+    .hero-transition a,
+    .hero-transition button,
+    .hero-transition [role="button"] {
+      pointer-events: auto;
+    }
+
+    /* Fixed dark topography backdrop — sits OUTSIDE everything that
+       pins/scales, locked to the viewport at the body level. The dark
+       topography animation runs inside but the container never moves. */
+    .fixed-topography-backdrop {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #170B05;
+      overflow: hidden;
+      z-index: 1;
+      pointer-events: none;
+    }
+    /* Galaxy second-layer dot grid — one instance in the fixed dark
+       backdrop, one inside .hero-scene (so it shows in the hero too).
+       Both fill their parent, paint behind it (first child), never
+       interactive. */
+    #galaxy-dots,
+    #galaxy-dots-hero {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+    }
+    /* Dark-background sphere (preloaded #40332D iframe). Starts
+       hidden; the close-transition opacity handoff fades it 0 → 1.
+       pointer-events on the wrapper is toggled to auto by the
+       scroll handler when the dark layer is the active one, so its
+       cursor/mouseover effect works (a child with pointer-events:
+       auto is hit-testable even though the backdrop is none). */
+    .dark-bg-sphere {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .dark-bg-sphere iframe {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 100%;
+      height: 100%;
+      transform: translate(-50%, -50%) scale(1.8);
+      transform-origin: center center;
+      border: 0;
+      display: block;
+      background: transparent;
+      pointer-events: auto;
+    }
+
+    /* Background text — fixed at the viewport, above the dark backdrop
+       (z:1) and below the hero card (z:5). Always visible. */
+    .background-text-layer {
+      position: fixed;
+      inset: 0;
+      height: 100vh;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    /* The hero scene starts at full viewport (scale 1) and scales DOWN
+       on scroll as one composited unit. Everything inside it scales
+       together because they're all children of this transform. */
+    .hero-scene {
+      position: absolute;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #EEE9DF;
+      overflow: hidden;
+      z-index: 5;
+      transform-origin: center center;
+      will-change: transform, background-color;
+      backface-visibility: hidden;
+      isolation: isolate; /* explicit blend boundary for descendants */
+    }
+
+    /* Explicitly disable any earlier bottom-bleed pseudo-element. */
+    .hero-scene::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    /* No CSS transitions on hero scroll-driven elements — GSAP owns the
+       animation, mixing in a CSS transition causes a frame-delayed
+       flicker at the bottom edge. */
+    .hero-scene,
+    .hero-bg,
+    .hero-content,
+    .portrait-wrap,
+    .portrait-layer,
+    .portrait,
+    .hero-word,
+    .hero-desc {
+      transition: none !important;
+    }
+    .hero-word,
+    .hero-desc {
+      will-change: opacity;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      pointer-events: none;
+      /* no z-index so this paints in tree order within .hero-scene's
+         stacking context — required for the portrait's mix-blend-mode
+         to reach the hero-scene background color */
+    }
+
+    /* Framer-hosted ParticleSphere effect, rendered as an iframe
+       behind the hero content. z-index 1 puts it above the flat
+       background and below the foreground content (z 2) and any
+       interactive elements (z 3). The iframe is sized 125% × 125%
+       and centred via translate(-50%, -50%) — overflow: hidden on
+       the wrapper crops the bleed (including the "Made in Framer"
+       badge in the bottom-right) without touching the source.
+
+       pointer-events: auto on the wrapper + iframe so the Framer
+       page's mouse-tracking interaction receives every move/click.
+       The foreground (.hero-content) is pointer-events: none so
+       the cursor passes through to this layer; <a>/<button> inside
+       re-enable pointer-events: auto and sit at z 3. */
+    .hero-framer-sphere {
+      position: absolute;
+      inset: 0;
+      /* NO z-index — paints in DOM order (it's before .hero-content),
+         so it stays behind the portrait WITHOUT forming a separate
+         stacking context. Required so the portrait's overlay blend
+         can reach this sphere as its backdrop. */
+      overflow: hidden;
+      pointer-events: auto;
+    }
+    .hero-framer-sphere iframe {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      pointer-events: auto;
+      /* Visually scale the rendered sphere up (NOT just the iframe
+         viewport). The wrapper's overflow: hidden clips the bleed. */
+      transform: translate(-50%, -50%) scale(1.8);
+      transform-origin: center center;
+      background: transparent;
+      /* NOTE: an SVG url() filter applied here blanks the iframe
+         (cross-origin pixels can't be sampled for the filter pass),
+         which is why the sphere disappeared. No iframe filter. */
+    }
+
+    .hero-content {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* NO z-index — must NOT form a stacking context, otherwise the
+         portrait's mix-blend-mode: overlay can't reach the hero-scene
+         backdrop (bg + Framer sphere) and renders like normal blend.
+         Paints above the sphere via DOM order instead. */
+      /* Decorative foreground: let mouse events pass through to the
+         Framer particle iframe behind. Real interactive elements
+         re-enable pointer-events below. */
+      pointer-events: none;
+    }
+    .hero-scene a,
+    .hero-scene button,
+    .hero-scene [role="button"] {
+      pointer-events: auto;
+      position: relative;
+      z-index: 3;
+    }
+
+    /* Topography canvases — one for the light scene, one for the dark.
+       Same animation algorithm, different palettes. No z-index on the
+       light canvas so it stays in .hero-scene's stacking context for
+       the blend backdrop. */
+    .topography {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+    }
+    .topography-light { opacity: 0.9; }
+    .topography-dark { opacity: 0.55; }
+
+    /* Two stacked rows of flat marquee text behind the hero card.
+       Both run continuously (CSS animation, not scroll-driven) in
+       opposite directions. No curves, no 3D, no SVG paths — just
+       horizontally translated tracks. */
+    .scrolling-bg-stack {
+      position: absolute;
+      top: calc(45% + 36px);
+      left: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .scrolling-bg-row {
+      overflow: hidden;
+      white-space: nowrap;
+      line-height: 1;
+      font-size: clamp(20px, 3vw, 48px);
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+    }
+
+    .scrolling-bg-row__track {
+      display: inline-block;
+      white-space: nowrap;
+      will-change: transform;
+    }
+
+    /* Row 1 — cream, scrolls LEFT */
+    .scrolling-bg-row--white {
+      color: #DFCFB7;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+    }
+    .scrolling-bg-row--white .scrolling-bg-row__track {
+      animation: scrolling-bg-left 38s linear infinite;
+    }
+
+    /* Row 2 — orange, scrolls RIGHT (opposite direction) */
+    .scrolling-bg-row--green {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      color: #A13D1F;
+    }
+    .scrolling-bg-row--green .scrolling-bg-row__track {
+      animation: scrolling-bg-right 44s linear infinite;
+    }
+
+    @keyframes scrolling-bg-left {
+      from { transform: translate3d(0, 0, 0); }
+      to   { transform: translate3d(-50%, 0, 0); }
+    }
+    @keyframes scrolling-bg-right {
+      from { transform: translate3d(-50%, 0, 0); }
+      to   { transform: translate3d(0, 0, 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scrolling-bg-row__track { animation: none !important; }
+    }
+
+    /* Section that appears after the hero transition. Background is
+       transparent so the fixed topography backdrop shows through. */
+    .next-section {
+      position: relative;
+      min-height: 100vh;
+      background: transparent !important;
+      color: #FCFCFA;
+      padding: 32px var(--page-pad, clamp(24px, 4vw, 72px)) 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Pull up to compress the dead-scroll gap left by .hero-transition's
+         100vh height + 40vh pin-spacer. By the time the quote pin engages
+         here, the scaled hero card has already scrolled above the viewport. */
+      margin-top: -60vh;
+      /* Decorative section is transparent and sits above the fixed
+         dark-sphere backdrop (z1). Let the cursor pass THROUGH to the
+         sphere so its Framer mouseover works; real interactive
+         elements re-enable pointer-events below. (Same pattern as
+         .hero-content.) */
+      pointer-events: none;
+    }
+    .next-section a,
+    .next-section button,
+    .next-section [role="button"] {
+      pointer-events: auto;
+    }
+
+    /* ─── Jony Ive Quote Block (Figma node 48:138) ─────────────── */
+    /* ─── IMAGE ACCORDION ────────────────────────────────────────
+       Figma 2042:156875 — 1440x640 container holding four panels: the
+       active one fills the remaining width, the other three sit at
+       120px each (1080 + 3x120 = 1440 exactly).
+
+       Height is a hard CAP. The section must never grow past the Figma
+       height, so .acc is bottom-anchored with a fixed block-size that
+       JS only ever reduces on short viewports. Nothing here can push
+       the section taller. */
+    .acc {
+      position: absolute;
+      inset-inline: 0;
+      inset-block-end: 0;
+      block-size: 640px;         /* Figma height; JS may reduce, never raise */
+      max-block-size: 640px;
+      overflow: hidden;          /* clips the off-screen entrance */
+      z-index: 1;                /* below the quote / WORK */
+      pointer-events: none;
+      --acc-expanded: 1080px;    /* active panel width; set by JS */
+    }
+    /* Slider title — sits above the composition, aligned to its left
+       edge. Positioned from the bottom in JS so it always rides the
+       slider's top edge rather than a hardcoded y. */
+    .acc-title {
+      position: absolute;
+      margin: 0;
+      font-family: 'Brier', 'Inter', sans-serif;
+      font-weight: 400;          /* Brier ships 400 only — 700 would fake it */
+      font-size: 64px;
+      line-height: 1.2;
+      color: #DFCFB7;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 2;                /* above the slider */
+    }
+    /* Each letter animates independently; inline-block so y transforms
+       apply, and will-change so the stagger stays smooth. */
+    .acc-title span {
+      display: inline-block;
+      will-change: transform, opacity;
+    }
+
+    /* Sub-line: one line of copy ending in an arrow, revealed through a
+       mask. The wrapper is the mask — it clips, and the inner block slides
+       in from outside its right edge. */
+    .acc-sub {
+      position: absolute;
+      overflow: hidden;          /* THE MASK */
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 2;
+    }
+    /* Link, but inert until armed — same gate as the image overlay, and
+       likewise scoped so it beats `.next-section a`. */
+    .acc-sub .acc-sub__inner { pointer-events: none; }
+    .acc-sub.is-interactive .acc-sub__inner { pointer-events: auto; }
+    .acc-sub__inner {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 1.35;
+      color: #DFCFB7;
+      will-change: transform, opacity;
+    }
+    /* The arrow is the anchor the line is justified to, and reads as the
+       sentence's full stop — so it sits inside the same moving block
+       rather than animating separately. */
+    /* Arrow nudges on hover — the line reads as a link without needing
+       an underline that would fight the masked reveal. */
+    .acc-sub__inner .acc-sub__arrow {
+      transition: transform 260ms cubic-bezier(.22,.61,.36,1);
+    }
+    .acc-sub__inner:hover .acc-sub__arrow,
+    .acc-sub__inner:focus-visible .acc-sub__arrow { transform: translateX(5px); }
+
+    .acc-sub__arrow {
+      /* Square, like every Material Symbol — the previous custom arrow was
+         a long thin line, which read quite differently. */
+      inline-size: 20px;
+      block-size: 20px;
+      flex: none;
+      display: block;
+    }
+
+    .acc__track {
+      display: flex;
+      /* max-content, not 100%: the row must wrap its panels exactly so the
+         radius below rounds the COMPOSITION's corners rather than the
+         full-bleed container's. At 100% the box would be viewport-wide
+         while its content is inset, and the corners would round off-screen. */
+      inline-size: max-content;
+      block-size: 100%;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border-radius: 12px;
+      overflow: hidden;          /* clips the panels to the rounded corners */
+    }
+    .acc__panel {
+      position: relative;
+      block-size: 100%;
+      flex: none;                /* width is driven entirely by JS */
+      overflow: hidden;
+      background: #D9D9D9;       /* Figma fill (see markup note) */
+      pointer-events: auto;      /* .next-section is pointer-events:none */
+      cursor: pointer;           /* panels expand on click */
+      will-change: width, transform;
+    }
+
+    /* TEMPORARY placeholder tints — the Figma rects are all the same
+       #D9D9D9, which makes the four panels indistinguishable while there
+       are no images. Distinct in both hue and value so the expand /
+       contract motion is readable. Delete this block once real images
+       are in: an .acc__img with a src covers the colour anyway. */
+    /* Panel 1 has a real image; its fill only shows in the letterbox
+       bands above and below, so it is neutral rather than a tint. */
+    .acc__panel:nth-child(1) { background: #1C1310; }
+    .acc__panel:nth-child(2) { background: #DFCFB7; }
+    .acc__panel:nth-child(3) { background: #4D7D72; }
+    .acc__panel:nth-child(4) { background: #8C7A5E; }
+
+    /* The image is sized to the EXPANDED width and centre-anchored, so a
+       narrowing panel CROPS it rather than squashing it. Only the panel's
+       width animates — the image itself never scales, so there is no
+       distortion and the focal point stays fixed at the centre. This is
+       what makes it read as panels concealing and revealing an image. */
+    .acc__img {
+      position: absolute;
+      /* Sized to the EXPANDED panel width and centre-anchored, so a
+         narrowing panel CROPS it rather than squashing it. */
+      inset-block: 0;
+      inset-inline-start: 50%;
+      transform: translateX(-50%);
+      inline-size: var(--acc-expanded);
+      block-size: 100%;
+      /* FILL, not fit: cover scales the image until it covers the panel
+         in both directions and trims the overflow. It never distorts —
+         the aspect ratio is preserved — so an image wider than the panel
+         loses a little off each side rather than showing bands. */
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+    .acc__img:not([src]) { display: none; }
+
+    /* Hover overlay on the first image. Inert until JS adds
+       .is-interactive, so it can't be triggered while the composition is
+       still animating in. */
+    .acc__overlay {
+      position: absolute;
+      inset: 0;
+    }
+    /* Scoped to .acc__panel deliberately: `.next-section a` in the section
+       CSS forces pointer-events:auto on every anchor here, and outranks a
+       bare `.acc__overlay`. This has to beat it to stay inert. */
+    .acc__panel .acc__overlay { pointer-events: none; }
+    .acc__panel.is-interactive { cursor: pointer; }
+    /* The overlay IS the link. Inert until armed, so nothing is clickable
+       or tabbable while the composition is still animating in. */
+    /* A RETRACTED panel is not a link: clicking it expands it, which is
+       the panel's own handler. Only once it has actually opened does its
+       overlay start taking clicks and become the way through to the
+       project. Both classes are required — .is-interactive gates on the
+       entrance being over, .is-open on this panel being the expanded one. */
+    .acc__panel.is-interactive.is-open .acc__overlay { pointer-events: auto; }
+
+    /* PLACEHOLDER — temporary empty section giving the pinned accordion
+       somewhere to scroll away into. Without something after it,
+       .next-section is the last element in the document and the pin ends
+       exactly at max scroll, so nothing can move. Replace with the real
+       next section, or delete this once one exists elsewhere. */
+    .tbd-section {
+      position: relative;
+      min-height: 100vh;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .quote-block {
+      position: relative;
+      z-index: 2;           /* WORK rides above the incoming slide */
+      max-width: 1244px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .quote-block__text {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: clamp(48px, 7.5vw, 105px);
+      line-height: 1.05;
+      color: #DFCFB7;
+      text-transform: uppercase;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+
+    .quote-block__text em {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      color: #A13D1F;
+      font-style: normal;
+    }
+
+    /* "magical" only. Scoped to .word-magic so WORK (.word-keep, the
+       other em in this paragraph) keeps its Inter 700 — the scroll
+       transition measures that word's box, so its metrics must not move.
+       Brier ships a single 400 weight, so it is set at 400: asking for
+       700 would make the browser synthesise a fake bold. */
+    .quote-block__text em.word-magic {
+      font-family: 'Brier', 'Inter', sans-serif;
+      font-weight: 400;
+    }
+
+    .quote-block__cite {
+      margin-top: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      line-height: 24px;
+      letter-spacing: 0.4px;
+      color: #DFCFB7;
+      text-transform: uppercase;
+    }
+
+    .quote-block__laurel {
+      width: 24px;
+      height: 42px;
+      display: block;
+      flex-shrink: 0;
+    }
+    .quote-block__laurel--left { transform: scaleX(-1); }
+
+    /* ─── Per-line cover-plate reveal ───────────────────────────────
+       Each row is a block-level .quote-line. Inside it, .line-mask
+       shrink-wraps the text via inline-block + max-content. The
+       .line-cover sits absolutely inside .line-mask with inset: 0,
+       so it is exactly the width + height of the row's text — a
+       full matte plate. The cover slides in, the text fades on
+       beneath it, then the cover slides out + fades to reveal. */
+
+    .quote-line {
+      display: block;
+      width: 100%;
+      text-align: center;
+      line-height: 0.965;
+      overflow: visible;
+    }
+
+    .line-mask {
+      position: relative;
+      display: inline-block;
+      width: auto;
+      max-width: max-content;
+      overflow: visible;
+      vertical-align: top;
+      line-height: inherit;
+    }
+
+    .line-text {
+      position: relative;
+      z-index: 1;
+      display: inline-block;
+      opacity: 0;
+      line-height: inherit;
+      will-change: opacity;
+    }
+
+    .comma-lift {
+      display: inline-block;
+      transform: translateY(-0.1em);
+    }
+
+    /* Cover plate — sized to the text row + a 1px bleed top/bottom so
+       adjacent rows' covers overlap by 2px and the subpixel seam
+       between them disappears during the sweep.
+       Starts as zero-width clipped from the right (grows left→right),
+       then retracts left→right by clipping from the left. */
+    .line-cover {
+      position: absolute;
+      z-index: 2;
+      top: -1px;
+      right: -0.5em;
+      bottom: -1px;
+      left: -0.5em;
+      background: #A13D1F;
+      border-radius: 999px;
+      clip-path: inset(0 100% 0 0 round 999px);
+      will-change: clip-path;
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .line-text  { opacity: 1 !important; }
+      .line-cover { display: none !important; }
+    }
+
+    /* ─── HERO OVERLAY (Figma node 20:26) ─── */
+    :root {
+      --ink: #282c20;
+      --lime: #b2c83b;
+    }
+
+    .hero-brand {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      line-height: 1;
+      color: #FCFCFA;
+      opacity: 0.7;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .hero-brand .b1 { font-weight: 400; }
+    .hero-brand .b2 { font-weight: 700; }
+
+    .hero-nav {
+      position: absolute;
+      top: 26px;
+      right: 40px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+      color: #FCFCFA;
+      opacity: 0.7;
+    }
+    .hero-nav a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* Centre ring - 1000px, no fill, hairline. The stroke is the hero
+       background (#EEE9DF) taken to 60% - the same hue, well down in value so
+       the ring actually reads against the ground.
+       `fixed` so it stays centred on the viewport instead of riding
+       .hero-scene's scroll transform, and it is the FIRST child of <main> so
+       everything after it paints on top. pointer-events:none keeps it clear of
+       the cursor and the sphere's interaction. */
+    .viewport-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      /* 1000 + 40%, then -10%, then +5% */
+      width: 1323px;
+      height: 1323px;
+      transform: translate(-50%, -50%);
+      /* The hero background #EEE9DF at 82% - same hue, further up in value. */
+      border: 1px solid #C3BFB7;
+      border-radius: 50%;
+      background: none;
+      pointer-events: none;
+      /* No z-index on purpose. The ring is a CHILD of .hero-scene, sitting after
+         .hero-bg and before the sphere and .hero-content, so tree order alone
+         puts it above the beige and under the type and the portrait.
+         It cannot be done from outside: .hero-transition is z:2 and its own
+         stacking context, so anything that clears the beige from out there also
+         clears the text. Being inside is what lets the three interleave.
+         The trade: .hero-scene is transformed on scroll, so the ring now rides
+         that scale with the rest of the hero instead of holding 1000px. */
+    }
+
+    .hero-word {
+      position: absolute;
+      margin: 0;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* ─── Hero side text — flanks the circle, follows it up on scroll
+       The circle is .hero-scene scaled to 0.31 with a circular clip;
+       on a landscape viewport the visible diameter is min(W,H)·0.31 ≈
+       31vh, so its half-width is 15.5vh. Side text sits 24px beyond
+       that on each side, vertically centred with the circle. */
+    .hero-side-text {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 32px;
+      line-height: 1;
+      color: #A13D1F;
+      text-transform: uppercase;
+      white-space: nowrap;
+      letter-spacing: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+    /* The last word set in the display face and the light cream, so the
+       phrase resolves on the word it is about. Brier ships 400 only, so the
+       weight drops from the surrounding 700 rather than being faked; the
+       parent's uppercase is inherited, and Brier carries a full set of caps. */
+    .hero-side-text__next {
+      font-family: 'Brier', 'Inter', sans-serif;
+      font-weight: 400;
+      color: #DFCFB7;
+    }
+    .hero-side-text--left  { right: calc(50% + 15.5vh + 24px); }
+    .hero-side-text--right { left:  calc(50% + 15.5vh + 24px); }
+
+    .hero-word--visual {
+      /* 52px + 8px. The trailing -0.3em cancels the letterfall wrapper's
+         padding-top and must stay in em so it tracks the font-size. */
+      top: calc(15.7% + 60px - 0.3em);
+      left: 40px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 17.55vw;
+      color: #3B0016;
+      letter-spacing: -0.03em;
+    }
+    /* Kern the U→A pair in VISUAL tighter (word tracks at -3%; U is
+       the 4th wrapper). -0.05em after it ⇒ effective -0.08em there.
+       CSS-only — does NOT touch the frozen letterfall JS. */
+    .hero-word--visual > span:nth-child(4) { margin-right: -0.05em; }
+
+    .hero-word--systems {
+      /* 48px - 8px. The trailing -0.3em cancels the letterfall wrapper's
+         padding-top and must stay in em so it tracks the font-size. */
+      top: calc(15.7vh + 14.95vw + 40px - 0.3em);
+      right: 40px;
+      /* Brier is supplied at 400 only. Asking for 700 would make the browser
+         synthesise a fake bold by smearing the outlines, so the weight matches
+         the face that actually exists. */
+      font-family: 'Brier', 'Inter', sans-serif;
+      font-weight: 400;
+      /* Anchored by `right: 40px` above, so the word grows LEFTWARD from a fixed
+         right edge as this value goes up — the right margin never moves.
+         Measured from the font's own advance widths, SYSTEMS is 3.804em wide
+         after tracking, so 22vw puts it at 83.7vw and it still clears the
+         viewport. Brier's caps are 0.700em against Inter's 0.728, so at an
+         equal font-size it renders about 4% shorter than VISUAL; 18.24vw is
+         where the two cap heights would match exactly, so anything above that
+         reads as deliberately larger than VISUAL rather than mismatched. */
+      font-size: 20vw;
+      color: #C64921;
+      letter-spacing: -0.03em;
+    }
+    /* Tighten only the S→T pair in SYSTEMS (S·Y·S·T·E·M·S — the S
+       before T is the 3rd letter). -0.05em after the 3rd wrapper ⇒
+       effective -0.08em there. CSS-only — frozen letterfall untouched. */
+    .hero-word--systems > span:nth-child(3) { margin-right: -0.05em; }
+    /* Tighten the S→Y pair (1st letter) and Y→S pair (2nd letter) by
+       the same -0.03em after each wrapper ⇒ effective -0.06em there.
+       CSS-only. */
+    .hero-word--systems > span:nth-child(1) { margin-right: -0.03em; }
+    .hero-word--systems > span:nth-child(2) { margin-right: -0.03em; }
+
+    .hero-desc {
+      position: absolute;
+      --fs: clamp(12px, 1.21vw, 24px);
+      font-size: var(--fs);
+      line-height: 1.4;
+      width: clamp(260px, 21.8vw, 400px);
+      /* 24px from the viewport right (was 16 — moved 8px left) */
+      right: 24px;
+      /* align last baseline of description with baseline of "VISUAL" above */
+      top: calc(15.7vh + 14.65vw - 3.61 * var(--fs) + 4px + 40px);
+      /* no z-index — relies on DOM order (this element is the LAST
+         child of .hero-content) so it paints above the portrait while
+         keeping the portrait in .hero-scene's stacking context */
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      color: #666666;
+      text-align: left;
+    }
+
+    /* Portrait layer — transparent full-bleed wrapper with no clipping
+       of its own. The hero card is the only clipping boundary. Sits at
+       z-index 4, above the ::after bottom-bleed strip. */
+    .portrait-wrap,
+    .portrait-layer,
+    .portrait-container,
+    .image-wrapper,
+    .hero-image,
+    picture {
+      background: transparent !important;
+    }
+    .portrait-wrap {
+      position: absolute;
+      inset: 0;
+      overflow: visible !important;
+      clip-path: none !important;
+      mask: none !important;
+      -webkit-mask: none !important;
+      pointer-events: none;
+      /* no z-index — keeps .hero-scene as the portrait's stacking
+         context so mix-blend-mode reaches the hero-scene background */
+    }
+
+    /* Portrait img layout — both stacked copies share these styles so
+       they sit on top of each other pixel-perfectly. Transform is
+       owned ENTIRELY by GSAP. */
+    .hero-portrait,
+    .portrait {
+      position: absolute;
+      left: 50%;
+      bottom: -25px; /* down 24px, bottom is clipped by .hero-scene overflow */
+      width: auto;
+      /* 77.9% - 10%, then +5% */
+      height: 73.62%;
+      max-width: none;
+      object-fit: contain;
+      background: transparent !important;
+      filter: grayscale(0);
+      transform-origin: center bottom;
+      will-change: transform, filter, opacity;
+      backface-visibility: hidden;
+    }
+    /* Two stacked variants. .portrait--overlay sits underneath at full
+       opacity; .portrait--normal sits on top and fades out. As the top
+       layer goes transparent, the always-on overlay-blended layer
+       below is revealed — no mid-crossfade dimming. */
+    .portrait--overlay { mix-blend-mode: overlay; opacity: 1; }
+    .portrait--normal  { mix-blend-mode: normal;  opacity: 1; }
+
+    /* ─── LC logo overlay ──────────────────────────────────────────
+       Fixed at body level so the dock animation isn't clipped by the
+       hero card and the LC can break free of .hero-scene's transform.
+       Position + size fully driven by GSAP (xPercent/yPercent for the
+       centring, y for the dock translation, scale for 200→48). */
+    /* Non-animated centring anchor. Layout-based centring (left: 50% +
+       margin-left: -83px) is computed once per layout and is immune to
+       transform/subpixel rounding. GSAP only touches the inner
+       .portrait-logo-overlay (y, scale, opacity) — never x/xPercent —
+       so the LC's horizontal position can't snap. */
+    .portrait-logo-anchor {
+      position: fixed;
+      left: 50%;
+      top: 24px;          /* docked top edge — never depends on viewport */
+      width: 166px;
+      height: 166px;
+      margin-left: -83px; /* half of width = centred via layout, not transform */
+      z-index: 100;
+      pointer-events: none;
+    }
+    .portrait-logo-overlay {
+      width: 100%;
+      height: 100%;
+    }
+
+    .lc-logo-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+    }
+
+    /* Paths start as zero-opacity fill + visible stroke. JS animates
+       stroke-dashoffset to draw the outline, then fill-opacity rises
+       at the end so the final lands as a solid lime mark.
+       vector-effect: non-scaling-stroke keeps the line weight constant
+       through .hero-scene's scale animation. */
+    .lc-path {
+      fill: #F64501;
+      fill-opacity: 0;
+      stroke: #F64501;
+      /* Width doubled (was 2) because each path is clipped to its own
+         shape via SVG clipPath — half of the centred stroke falls outside
+         and gets clipped away, so 4 → 2px effective inner stroke. */
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+    }
+  </style>
+</head>
+<body>
+  <!-- Shared nav. One element; it carries both colour layers internally
+       and the scroll handler below crossfades them via --nav-over. -->
+  <site-nav></site-nav>
+
+
+  <!-- Particle recolour filter. RGB rows output a constant colour
+       (the Start→End interpolation, written by JS each scroll frame);
+       the alpha row derives opacity from Rec.709 luminance so the
+       white particle texture + transparent background survive — it
+       tints, it does not flatten. -->
+  <svg width="0" height="0" aria-hidden="true"
+       style="position:absolute;width:0;height:0;overflow:hidden">
+    <defs>
+      <filter id="ps-color" color-interpolation-filters="sRGB">
+        <feColorMatrix id="ps-color-matrix" type="matrix" values="
+          0       0       0       0  1
+          0       0       0       0  1
+          0       0       0       0  1
+          0.2126  0.7152  0.0722  0  0
+        "/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- True fixed viewport backdrop — solid colour only. The particle
+       sphere lives ONLY in .hero-scene now; this no longer hosts a
+       duplicate iframe (that was the second sphere blending behind the
+       circular close). Outside <main> so it's never inside a
+       pinned/transformed parent. -->
+  <div class="fixed-topography-backdrop" aria-hidden="true">
+    <!-- Galaxy "second layer": the back-half latitude/longitude dot
+         grid ported from galaxy.html. Self-contained, non-interactive,
+         painted FIRST (behind the dark Framer sphere) inside this
+         existing z1 backdrop — touches nothing else. -->
+    <canvas id="galaxy-dots" aria-hidden="true"></canvas>
+    <!-- Dark-background particle sphere. Preloaded at page load with a
+         FIXED #40332D colour URL — never reloaded, never changed by
+         the panel (class is NOT .hero-framer-sphere so the panel's
+         querySelector skips it). Starts opacity 0; fades in via the
+         opacity handoff as the circle closes. -->
+    <div class="dark-bg-sphere" aria-hidden="true">
+      <!-- No static src: loadDark() assigns the full-params URL once.
+           (The old ?particleColor-only src still mismatched buildUrl
+           and forced a reload — same double-load bug as the hero.) -->
+      <iframe
+        title="Framer Particle Sphere (dark background)"
+        loading="eager"
+      ></iframe>
+    </div>
+  </div>
+
+  <!-- LC logo overlay — fixed at body level so it's free of .hero-scene's
+       transform and isn't clipped during the dock animation. Wrapped in
+       a non-animated .portrait-logo-anchor that owns the centring (CSS
+       only, no transforms) so GSAP's transforms on the inner overlay
+       can never conflict with the centring math (audit item 6). -->
+  <div class="portrait-logo-anchor" aria-hidden="true">
+  <div class="portrait-logo-overlay">
+    <svg class="lc-logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Each visible path is clipped to its own shape, so the stroke
+           is rendered only inside the letterform (the outer half of the
+           centred stroke is clipped away) — gives an inner-stroke look
+           with no outer border bleed. -->
+      <defs>
+        <clipPath id="lc-clip-l">
+          <path d="M94.58,84.09l-9.7-9.95c-.56-.58-1.34-.91-2.15-.91h-16.92c-.84,0-1.52-.68-1.52-1.52v-37.26c0-1.66-1.34-3-3-3h-8c-1.66,0-3,1.34-3,3v49.78c0,1.66,1.34,3,3,3h39.97c1.64,0,2.47-1.97,1.32-3.14Z"/>
+        </clipPath>
+        <clipPath id="lc-clip-c">
+          <path d="M92.18,101.46h-43.93c-.41,0-.82-.02-1.22-.06-1.61-.16-3.12-.65-4.48-1.38-.34-.18-.67-.38-.99-.6-1.14-.77-2.12-1.74-2.94-2.84-.55-.75-1.03-1.56-1.4-2.43-.3-.72-.54-1.47-.7-2.25-.16-.78-.24-1.59-.24-2.41V29.51c0-6.61,5.36-11.97,11.97-11.97h14.99c.81,0,1.58-.33,2.15-.91l9.7-9.95c1.14-1.17.31-3.14-1.32-3.14h-28.11c-2.02,0-3.97.26-5.84.74-.37.1-.74.2-1.11.31-3.66,1.14-6.93,3.15-9.58,5.79-.26.26-.52.53-.77.81-3.77,4.15-6.07,9.66-6.07,15.71h0v65.18c0,12.91,10.46,23.37,23.37,23.37h46.53c1.61,0,2.92-1.31,2.92-2.92v-8.15c0-1.61-1.31-2.92-2.92-2.92Z"/>
+        </clipPath>
+      </defs>
+      <path class="lc-path lc-path-l" clip-path="url(#lc-clip-l)" d="M94.58,84.09l-9.7-9.95c-.56-.58-1.34-.91-2.15-.91h-16.92c-.84,0-1.52-.68-1.52-1.52v-37.26c0-1.66-1.34-3-3-3h-8c-1.66,0-3,1.34-3,3v49.78c0,1.66,1.34,3,3,3h39.97c1.64,0,2.47-1.97,1.32-3.14Z"/>
+      <path class="lc-path lc-path-c" clip-path="url(#lc-clip-c)" d="M92.18,101.46h-43.93c-.41,0-.82-.02-1.22-.06-1.61-.16-3.12-.65-4.48-1.38-.34-.18-.67-.38-.99-.6-1.14-.77-2.12-1.74-2.94-2.84-.55-.75-1.03-1.56-1.4-2.43-.3-.72-.54-1.47-.7-2.25-.16-.78-.24-1.59-.24-2.41V29.51c0-6.61,5.36-11.97,11.97-11.97h14.99c.81,0,1.58-.33,2.15-.91l9.7-9.95c1.14-1.17.31-3.14-1.32-3.14h-28.11c-2.02,0-3.97.26-5.84.74-.37.1-.74.2-1.11.31-3.66,1.14-6.93,3.15-9.58,5.79-.26.26-.52.53-.77.81-3.77,4.15-6.07,9.66-6.07,15.71h0v65.18c0,12.91,10.46,23.37,23.37,23.37h46.53c1.61,0,2.92-1.31,2.92-2.92v-8.15c0-1.61-1.31-2.92-2.92-2.92Z"/>
+    </svg>
+  </div>
+  </div>
+
+
+  <main>
+    <section class="hero-transition" id="hero-transition">
+      <!-- Side text flanking the circle. Vertically centred with the
+           hero-scene (top: 50%) and inside .hero-transition so it
+           scrolls upward with the circle after the hero pin releases.
+           Animated in via a letterfall when the scroll-up begins. -->
+      <div class="hero-side-text hero-side-text--left"  aria-hidden="true">Combining&nbsp;AI&nbsp;and&nbsp;Craft</div>
+      <div class="hero-side-text hero-side-text--right" aria-hidden="true">To&nbsp;Shape&nbsp;What&rsquo;s&nbsp;<span class="hero-side-text__next">Next</span></div>
+
+      <!-- The hero scene that scales down as one composited unit -->
+      <div class="hero-scene" id="hero-scene">
+        <!-- Galaxy dot grid inside the hero (first child → paints over
+             the hero-scene bg fill, behind the Framer sphere + content).
+             pointer-events:none, no z-index — doesn't touch the sphere,
+             cursor, or scroll setup. Rides the hero-scene transform. -->
+        <canvas id="galaxy-dots-hero" aria-hidden="true"></canvas>
+        <div class="hero-bg"></div>
+        <div class="viewport-ring" aria-hidden="true"></div>
+
+        <div class="hero-framer-sphere" aria-hidden="true">
+          <!-- No static src: JS (apply(true)) assigns the with-params
+               URL once at load. A hardcoded src here caused a param-less
+               first load + immediate reload (blank flash / Framer intro
+               replaying / "sometimes not showing"). -->
+          <iframe
+            title="Framer Particle Sphere Background"
+            loading="eager"
+          ></iframe>
+        </div>
+
+        <div class="hero-content">
+          <div class="hero-word hero-word--visual">VISUAL</div>
+          <div class="hero-word hero-word--systems">SYSTEMS</div>
+
+          <div class="portrait-wrap" id="portrait-wrap">
+            <!-- Two stacked portraits. The overlay-blend copy sits
+                 underneath at FULL opacity. The normal-blend copy is
+                 painted on top and fades out — as it goes transparent,
+                 the always-on overlay copy is revealed. This avoids the
+                 mid-crossfade dimming you'd get from cross-fading both. -->
+            <img class="portrait hero-portrait portrait--overlay" src="Support/profile-pic6.png" alt="" aria-hidden="true" />
+            <img class="portrait hero-portrait portrait--normal" src="Support/profile-pic6.png" alt="Chris Lindenmayer" />
+          </div>
+
+          <p class="hero-desc">Lead Product Designer &amp; Creative Director specializing in design systems &amp; AI-native workflows</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="next-section">
+      <!-- Project slider — enters from off-screen right once the quote
+           text has faded. Only slide 1 exists so far; the track is
+           built to hold more, and adding them needs no timeline change
+           beyond extending the travel. -->
+      <!-- Image accordion — Figma 2042:156875. Four panels: the active
+           one fills the remaining width, the other three sit at 120px.
+           The Figma rects are unfilled #D9D9D9 placeholders with no image
+           assets attached, so the panels ship as flat fills; adding a src
+           to an .acc__img lights it up with the correct cover crop.
+           Panels expand on click; role/tabindex make that reachable by
+           keyboard (Enter or Space), so it is not pointer-only. -->
+      <!-- Slider title. Split into per-letter spans by JS for the
+           staggered fade-up; the text here stays the accessible copy. -->
+      <h2 class="acc-title">envision</h2>
+
+      <!-- Sub-line — masked reveal, right-justified on the arrow. -->
+      <div class="acc-sub">
+        <a class="acc-sub__inner" href="envision.html">
+          <span class="acc-sub__copy">Virtual Design Center</span>
+          <!-- Material Symbols "arrow_forward" — the same glyph the design
+               system's Link uses. Inlined as a path rather than pulling in
+               the Material Symbols font just for one character. -->
+          <svg class="acc-sub__arrow" viewBox="0 -960 960 960" aria-hidden="true" focusable="false">
+            <path fill="currentColor"
+                  d="M647-440H160v-80h487L423-744l57-56 320 320-320 320-57-56 224-224Z"/>
+          </svg>
+        </a>
+      </div>
+
+      <div class="acc">
+        <ul class="acc__track" role="list">
+        <li class="acc__panel" data-i="0" tabindex="0" role="button" aria-label="Expand project image 1">
+          <img class="acc__img"
+               src="envision/Developer%20Center/kitchen1.png"
+               alt="Envision kitchen design — white shaker cabinets with a marble waterfall island">
+          <!-- The whole image is the link through to the project page.
+               No wash, no mark: it is a bare click target. -->
+          <a class="acc__overlay" href="envision.html"
+             aria-label="Envision — Virtual Design Center"></a>
+        </li>
+        <li class="acc__panel" data-i="1" tabindex="0" role="button" aria-label="Expand project image 2">
+          <img class="acc__img"
+               src="Case%20Studies/Teledynamics/thumb.png"
+               alt="Teledynamics: a blue RJ45 ethernet patch cable connector">
+          <a class="acc__overlay" href="teledynamics.html"
+             aria-label="Teledynamics: B2B Commerce Experience"></a>
+        </li>
+        <li class="acc__panel" data-i="2" tabindex="0" role="button" aria-label="Expand project image 3">
+          <img class="acc__img" alt="">
+        </li>
+        <li class="acc__panel" data-i="3" tabindex="0" role="button" aria-label="Expand project image 4">
+          <img class="acc__img" alt="">
+        </li>
+        </ul>
+      </div>
+
+      <!-- Jony Ive quote — sits 500px below the bottom of the hero
+           transition (i.e., 500px below the portrait container).
+           Each visible line is wrapped in .quote-line for the
+           scroll-driven mask-reveal animation. -->
+      <div class="quote-block">
+        <div class="quote-block__text" role="paragraph">
+          <div class="quote-line">
+            <span class="line-mask">
+              <span class="line-text">When something</span>
+              <span class="line-cover" aria-hidden="true"></span>
+            </span>
+          </div>
+          <div class="quote-line">
+            <span class="line-mask">
+              <span class="line-text"><em>exceeds</em> your ability</span>
+              <span class="line-cover" aria-hidden="true"></span>
+            </span>
+          </div>
+          <div class="quote-line">
+            <span class="line-mask">
+              <span class="line-text">to understand how</span>
+              <span class="line-cover" aria-hidden="true"></span>
+            </span>
+          </div>
+          <div class="quote-line">
+            <span class="line-mask">
+              <span class="line-text"><span class="word-other">it </span><em class="word-keep">work<span class="word-other">s</span></em><span class="word-other"><span class="comma-lift">,</span> it sort of</span></span>
+              <span class="line-cover" aria-hidden="true"></span>
+            </span>
+          </div>
+          <div class="quote-line">
+            <span class="line-mask">
+              <span class="line-text">becomes <em class="word-magic">magical</em>.</span>
+              <span class="line-cover" aria-hidden="true"></span>
+            </span>
+          </div>
+        </div>
+        <div class="quote-block__cite">
+          <span>Jony Ive</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLACEHOLDER — see .tbd-section in the stylesheet. Exists only so
+         the pinned section above can scroll away. Replace with the real
+         next section. -->
+    <section class="tbd-section" aria-hidden="true"></section>
+  </main>
+
+  <script>
+    /* Topography animation — runs on BOTH the light hero canvas and the
+       dark under-scene canvas with one shared noise field + timestep so
+       the two scenes stay synchronized. */
+    (function () {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function noise(x, y, t) {
+        return (
+          Math.sin(x * 1.00 + t * 0.65) * Math.cos(y * 1.30 - t * 0.50) * 1.00 +
+          Math.sin(x * 2.10 + 1.7 - t * 0.30) * Math.cos(y * 2.30 + 0.4 + t * 0.55) * 0.55 +
+          Math.sin(x * 4.30 + 0.3 + t * 0.40) * Math.cos(y * 4.70 + 1.1 - t * 0.20) * 0.30 +
+          Math.sin(x * 8.10 + 2.1 - t * 0.50) * Math.cos(y * 9.30 + 1.9 + t * 0.30) * 0.15
+        ) / 2.0;
+      }
+
+      const NOISE_X = 1.5;
+      const NOISE_Y = 0.975;
+      const LEVELS = 16;
+
+      // each scene has its own size + grid (different canvas dimensions),
+      // but they share the same noise function + timestep
+      function makeScene(canvas, bgColor, lineColor) {
+        if (!canvas) return null;
+        const ctx = canvas.getContext('2d');
+        return {
+          canvas, ctx, bgColor, lineColor,
+          W: 0, H: 0, NX: 0, NY: 0, cellW: 0, cellH: 0, grid: null
+        };
+      }
+
+      // Shared state for the light topography line color so GSAP can
+       // tween it across the scroll (#DCDCCE → #494D40).
+      window.__heroTopoLineColor = window.__heroTopoLineColor || '#DCDCCE';
+
+      const scenes = [
+        // BOTH canvases use transparent bg so the underlying CSS bg of
+        // their parent (.hero-scene / .under-scene) shows through —
+        // critical for the hero bg color animation #FCFCFA → #494D40.
+        // Light canvas reads its line color dynamically from the
+        // shared state above.
+        makeScene(document.getElementById('topo-light'), null, () => window.__heroTopoLineColor),
+        makeScene(document.getElementById('topo-dark'),  null, '#4A4E40')
+      ].filter(Boolean);
+
+      function resizeScene(s) {
+        const rect = s.canvas.getBoundingClientRect();
+        s.W = rect.width; s.H = rect.height;
+        if (s.W <= 0 || s.H <= 0) return;
+        s.canvas.width = s.W * dpr;
+        s.canvas.height = s.H * dpr;
+        s.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        s.NX = Math.max(40, Math.round(s.W / 10));
+        s.NY = Math.max(30, Math.round(s.H / 10));
+        s.cellW = s.W / s.NX;
+        s.cellH = s.H / s.NY;
+        s.grid = new Float32Array((s.NX + 1) * (s.NY + 1));
+      }
+      function resizeAll() { scenes.forEach(resizeScene); }
+      resizeAll();
+      window.addEventListener('resize', resizeAll);
+
+      function drawScene(s, t) {
+        if (!s.grid) return;
+        const { ctx, W, H, NX, NY, cellW, cellH, grid, bgColor } = s;
+        const lineColor = (typeof s.lineColor === 'function') ? s.lineColor() : s.lineColor;
+
+        for (let j = 0; j <= NY; j++) {
+          const ny = (j / NY) * NOISE_Y;
+          const row = j * (NX + 1);
+          for (let i = 0; i <= NX; i++) {
+            const nx = (i / NX) * NOISE_X;
+            grid[row + i] = noise(nx, ny, t);
+          }
+        }
+
+        if (bgColor) {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, W, H);
+        } else {
+          ctx.clearRect(0, 0, W, H);
+        }
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        for (let l = 0; l < LEVELS; l++) {
+          const level = -0.92 + (l / (LEVELS - 1)) * 1.84;
+          ctx.strokeStyle = lineColor;
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          for (let j = 0; j < NY; j++) {
+            const y0 = j * cellH;
+            const y1 = y0 + cellH;
+            const rowT = j * (NX + 1);
+            const rowB = (j + 1) * (NX + 1);
+            for (let i = 0; i < NX; i++) {
+              const tl = grid[rowT + i];
+              const tr = grid[rowT + i + 1];
+              const br = grid[rowB + i + 1];
+              const bl = grid[rowB + i];
+
+              let m = 0;
+              if (tl >= level) m |= 1;
+              if (tr >= level) m |= 2;
+              if (br >= level) m |= 4;
+              if (bl >= level) m |= 8;
+              if (m === 0 || m === 15) continue;
+
+              const x0 = i * cellW;
+              const x1 = x0 + cellW;
+              const top    = () => [x0 + cellW * (level - tl) / (tr - tl), y0];
+              const right  = () => [x1, y0 + cellH * (level - tr) / (br - tr)];
+              const bottom = () => [x0 + cellW * (level - bl) / (br - bl), y1];
+              const left   = () => [x0, y0 + cellH * (level - tl) / (bl - tl)];
+              const seg = (a, b) => { ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); };
+
+              switch (m) {
+                case 1: case 14: seg(top(), left()); break;
+                case 2: case 13: seg(top(), right()); break;
+                case 3: case 12: seg(left(), right()); break;
+                case 4: case 11: seg(right(), bottom()); break;
+                case 6: case 9:  seg(top(), bottom()); break;
+                case 7: case 8:  seg(left(), bottom()); break;
+                case 5: {
+                  const avg = (tl + tr + br + bl) * 0.25;
+                  if (avg >= level) { seg(top(), right()); seg(bottom(), left()); }
+                  else              { seg(top(), left());  seg(bottom(), right()); }
+                  break;
+                }
+                case 10: {
+                  const avg = (tl + tr + br + bl) * 0.25;
+                  if (avg >= level) { seg(top(), left());  seg(bottom(), right()); }
+                  else              { seg(top(), right()); seg(bottom(), left()); }
+                  break;
+                }
+              }
+            }
+          }
+          ctx.stroke();
+        }
+      }
+
+      let t = 0;
+      function frame() {
+        t += 0.0025;
+        for (const s of scenes) drawScene(s, t);
+        requestAnimationFrame(frame);
+      }
+      frame();
+    })();
+  </script>
+
+  <script>
+    /* GSAP ScrollTrigger — pinned scrubbed timeline.
+       PHASES (in timeline time, scrubbed to scroll progress):
+         0.00 → 0.25  hero is full-viewport; background text slides; under-scene
+                      barely visible (hidden behind full-size hero).
+         0.25 → 1.25  hero scales 1 → 0.42 (one composited unit). Portrait
+                      grayscales + fades to 0.6, portrait-wrap bg →#494D40.
+                      The dark under-scene is revealed around the edges.
+       After pin ends: the scaled hero scrolls away with the page. */
+    (function () {
+      if (!window.gsap || !window.ScrollTrigger) return;
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Always start at the top on reload so the scroll-driven
+      // animations init from a known state — otherwise mid-pin scroll
+      // restoration computes wrong tween values.
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+      window.scrollTo(0, 0);
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) return;
+
+      gsap.set('.hero-scene', {
+        scale: 1,
+        x: 0,                       // explicit x lock — never shift on x
+        xPercent: 0,
+        backgroundColor: '#EEE9DF', // explicit start so the bg tween
+                                    // reliably interpolates → #40332D
+        transformOrigin: 'center center',
+        force3D: true,
+        clipPath: 'inset(0% 0% 0% 0% round 0px)' // no clip / no round at start
+      });
+
+      // Portrait transform is owned ENTIRELY by GSAP (no CSS transform
+      // declared on .portrait) so there is no conflicting transform
+      // source that could cause subpixel jitter at the bottom edge.
+      // Initial state: 10% smaller and shifted 40px to the left of
+      // center. Scroll animates back to scale 1.25 and centered.
+      gsap.set('.portrait', {
+        xPercent: -50,
+        x: -20,
+        scale: 0.931,
+        transformOrigin: 'center bottom',
+        force3D: true
+      });
+
+      // Letterfall — split VISUAL & SYSTEMS into per-character units:
+      // a stationary inline-block WRAPPER with overflow:hidden (the
+      // bottom mask) holding an inline-block GLYPH that translates down
+      // + fades, sliding out behind the wrapper's bottom edge. Wrapper
+      // padded 0.3em each side so line-height:1 ink isn't shaved at
+      // rest; the words' CSS `top` subtracts the same 0.3em to cancel
+      // the padding-top shift. Scrubbed to scroll (see onUpdate).
+      // ⚠ FROZEN per Chris — do NOT alter this effect unless he asks.
+      const heroChars = [];
+      ['.hero-word--visual', '.hero-word--systems'].forEach(function (sel) {
+        const el = document.querySelector(sel);
+        if (!el) return;
+        // The 0.12em bottom crop was measured against Inter, whose capitals sit
+        // higher in the em box. Brier's baseline lands 1.2em down from the wrap
+        // top while that crop crops at 1.18em, so it ate the bottom serifs.
+        // Brier's capitals do not descend and the content box already extends
+        // 0.1em past the baseline, which is mask enough — so SYSTEMS takes no
+        // extra crop. VISUAL is still Inter and keeps the frozen 0.12em.
+        const bottomCrop = sel === '.hero-word--systems' ? '0' : '0.12em';
+        const text = el.textContent;
+        el.textContent = '';
+        for (let i = 0; i < text.length; i++) {
+          const wrap = document.createElement('span');
+          wrap.style.display = 'inline-block';
+          wrap.style.overflow = 'hidden';
+          wrap.style.verticalAlign = 'top';
+          wrap.style.paddingTop = '0.3em';
+          wrap.style.paddingBottom = '0';   // bottom mask at the baseline (no padding below)
+          // Pull the visible mask up above the baseline via clip-path
+          // (doesn't change layout; only crops the rendered area).
+          wrap.style.clipPath = 'inset(0 0 ' + bottomCrop + ' 0)';
+          const glyph = document.createElement('span');
+          glyph.textContent = text[i];
+          glyph.style.display = 'inline-block';
+          glyph.style.willChange = 'opacity, transform';
+          wrap.appendChild(glyph);
+          el.appendChild(wrap);
+          heroChars.push(glyph);
+        }
+      });
+      const heroCharDrop = heroChars.map(function (s) {
+        return Math.max(18, s.offsetHeight * 1.05);
+      });
+      const heroWordsTl = gsap.timeline({ paused: true });
+      heroChars.forEach(function (c, i) {
+        heroWordsTl.fromTo(c,
+          { y: 0, opacity: 1 },
+          { y: heroCharDrop[i], opacity: 0, duration: 0.8, ease: 'power2.inOut' },
+          i * 0.04
+        );
+      });
+
+      // ─── Side text letterfall — letters rise UP from below the
+      // baseline (mask stays at the wrap bottom). Same per-letter
+      // wrap structure as VISUAL/SYSTEMS; glyphs start translated
+      // down past the bottom mask (clipped, invisible) and animate
+      // up to y=0 to settle in place.
+      const sideChars = [];
+      document.querySelectorAll('.hero-side-text').forEach(function (el) {
+        // Walk child NODES rather than reading textContent. Flattening the
+        // string drops any span inside it, which silently deleted the
+        // .hero-side-text__next wrapper that sets the last word in the
+        // display face: the markup was correct and the letterfall ate it.
+        // Each character carries its source element's class onto its glyph.
+        const chars = [];
+        [].forEach.call(el.childNodes, function (node) {
+          const cls = node.nodeType === 1 ? node.className : '';
+          const t = node.textContent;
+          for (let i = 0; i < t.length; i++) chars.push({ ch: t[i], cls: cls });
+        });
+        el.textContent = '';
+        chars.forEach(function (c) {
+          const wrap = document.createElement('span');
+          wrap.style.display = 'inline-block';
+          wrap.style.overflow = 'hidden';
+          wrap.style.verticalAlign = 'top';
+          wrap.style.paddingTop = '0.15em';
+          wrap.style.paddingBottom = '0';   // mask sits at the baseline
+          const glyph = document.createElement('span');
+          glyph.textContent = c.ch;
+          if (c.cls) glyph.className = c.cls;
+          glyph.style.display = 'inline-block';
+          glyph.style.willChange = 'opacity, transform';
+          wrap.appendChild(glyph);
+          el.appendChild(wrap);
+          sideChars.push(glyph);
+        });
+      });
+
+      if (sideChars.length) {
+        // Initial: glyphs below the bottom mask (clipped, invisible).
+        sideChars.forEach(function (g) {
+          gsap.set(g, { y: g.offsetHeight * 1.05, opacity: 0 });
+        });
+
+        // Scrubbed to scroll — letterfall progresses 1:1 with the
+        // scroll position. Starts a beat after the LC fill (~32vh)
+        // and finishes a touch past the hero pin release for a
+        // snappy feel.
+        const sideTl = gsap.timeline({
+          scrollTrigger: {
+            start: () => window.innerHeight * 0.32,
+            end:   () => window.innerHeight * 0.48,
+            scrub: 1,
+            invalidateOnRefresh: true
+          },
+          defaults: { duration: 0.4, ease: 'power2.out' }
+        });
+        sideChars.forEach(function (c, i) {
+          sideTl.fromTo(c,
+            { y: () => c.offsetHeight * 1.05, opacity: 0 },
+            { y: 0, opacity: 1 },
+            i * 0.015
+          );
+        });
+      }
+
+      // Two stacked portrait copies. Overlay sits beneath at full
+       // opacity at all times. Only the normal copy on top fades out
+       // — revealing the overlay-blended layer below as it goes
+       // transparent. No mid-fade dimming.
+      gsap.set('.portrait--normal', { opacity: 1 });
+      gsap.set('.portrait--overlay', { opacity: 1 });
+
+      // Color interpolator for the topography line color animation.
+      const lineColorLerp = gsap.utils.interpolate('#DCDCCE', '#494D40');
+      // Galaxy line color lerp — runs alongside the scrub.
+      const galaxyLineLerp = gsap.utils.interpolate('#79746B', '#40332D');
+
+      // .nav-over (dark nav) fades out as the hero card shrinks away
+      // from the top of the viewport — never scales, never moves.
+      // Visible while the white card sits behind it; faded out once
+      // the card has shrunk past it.
+      ScrollTrigger.create({
+        trigger: '.hero-transition',
+        start: 'top top',
+        end: '+=40%',
+        scrub: true,
+        onUpdate: self => {
+          // hide the dark nav once the card has clearly shrunk away
+          // from the nav area (~18% of the scroll progress)
+          var nav = document.querySelector('site-nav');
+          // A page transition takes ownership of the nav ink while it runs,
+          // so a refresh mid-transition cannot snap it back.
+          if (nav && !window.__navInkLocked) nav.style.setProperty('--nav-over', self.progress > 0.18 ? 0 : 1);
+        }
+      });
+
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: '.hero-transition',
+          start: 'top top',
+          end: '+=40%',
+          scrub: true,
+          pin: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+
+          // Drive the text fade — hero words and hero-desc both
+          // fade their opacity to 0 over the first 30% of the scroll.
+          onUpdate: self => {
+            const p = self.progress;
+
+            // Particle-sphere handoff is OPACITY-ONLY (two preloaded
+            // iframes, fixed colours — no src/URL/colour change ever).
+            // The opacity tweens live on this timeline; here we only
+            // route pointer-events to whichever sphere is the visible
+            // one so its cursor/mouseover effect works. Not a visual
+            // change. Hero active first half, dark sphere after.
+            const heroActive = p < 0.5;
+            gsap.set('.hero-scene > .hero-framer-sphere',
+              { pointerEvents: heroActive ? 'auto' : 'none' });
+            gsap.set('.dark-bg-sphere',
+              { pointerEvents: heroActive ? 'none' : 'auto' });
+
+            // hero-desc — plain opacity fade 0.05 → 0.30
+            const descO = gsap.utils.clamp(0, 1,
+              gsap.utils.mapRange(0.05, 0.30, 1, 0, p)
+            );
+            const descEl = document.querySelector('.hero-desc');
+            if (descEl) descEl.style.opacity = descO;
+
+            // Portrait — opacity 1 → 0 across scroll progress 30% → 75%
+            // of the hero transition. Fade begins earlier; end point
+            // unchanged.
+            const portO = gsap.utils.clamp(0, 1,
+              gsap.utils.mapRange(0.30, 0.75, 1, 0, p)
+            );
+            const portraits = document.querySelectorAll('.portrait');
+            for (let i = 0; i < portraits.length; i++) {
+              portraits[i].style.opacity = portO;
+            }
+
+            // Letterfall — scrubbed to scroll; the whole staggered
+            // drop+fade completes by ~halfway (LF_END) no matter how
+            // fast you scroll; reverses in lockstep on scroll-up.
+            const LF_END = 0.5;
+            heroWordsTl.progress(Math.min(1, Math.max(0, p / LF_END)));
+
+            // Topography line color: #DCDCCE → #494D40 over the scroll
+            window.__heroTopoLineColor = lineColorLerp(p);
+
+            // Galaxy line color: #79746B → #40332D over the scroll
+            const gColor = galaxyLineLerp(p);
+            const mats = window.__galaxyLineMaterials;
+            if (mats) for (let i = 0; i < mats.length; i++) mats[i].color.set(gColor);
+          }
+        }
+      });
+
+      // Hero card scale — uniform 0.31 (splits the difference between
+       // the original 0.373 and a tighter 0.25). The 1:1 final aspect
+       // comes from clip-path side-inset; round 999px makes it a circle.
+      tl.to('.hero-scene', {
+        scale: 0.31,
+        // Inset is computed from the LIVE viewport aspect so the clipped
+        // visible area is always exactly square (→ a true circle via
+        // `round 999px`), not just at 16:9. Landscape: inset the long
+        // (horizontal) axis; portrait: inset the vertical axis. Function
+        // value → re-evaluated on ScrollTrigger refresh/resize. Round
+        // must be in the initial clip-path too so GSAP can interpolate
+        // (see gsap.set above).
+        clipPath: function () {
+          var W = window.innerWidth, H = window.innerHeight;
+          if (W >= H) {
+            var s = ((1 - H / W) / 2 * 100).toFixed(4);
+            return 'inset(0% ' + s + '% 0% ' + s + '% round 999px)';
+          }
+          var t = ((1 - W / H) / 2 * 100).toFixed(4);
+          return 'inset(' + t + '% 0% ' + t + '% 0% round 999px)';
+        },
+        ease: 'none',
+        force3D: true
+      }, 0);
+
+      // Hero-scene background colour — separated so it can start later.
+      // The scale tween uses GSAP's default duration (0.5), so this
+      // ends at 0.5 to match — colour is fully transitioned by the
+      // time the circle is at its final small scale.
+      tl.to('.hero-scene', {
+        backgroundColor: '#40332D',
+        ease: 'none',
+        duration: 0.35
+      }, 0.15);
+
+      // Portrait fade is driven off scroll progress directly (see the
+      // ScrollTrigger onUpdate above) rather than a timeline tween, so
+      // the start/end map to the full hero-transition scroll window
+      // (50% → 95%), not to timeline-local time.
+
+      // Keep the Framer sphere the SAME visual size through the whole
+      // transition — it must NOT scale on scroll. It lives inside
+      // .hero-scene, which scales 1 → 0.31 (linear, ease:none), so
+      // heroScale(p) = 1 − 0.69p. Counter-scale ONLY the in-scene
+      // sphere wrapper by 1/heroScale(p) so wrapper × heroScene = 1
+      // at every p. A linear scale 1 → 1/0.31 isn't 1/(1−0.69p),
+      // so a custom ease maps progress onto the reciprocal exactly:
+      //   value = 1 + e·(1/0.31 − 1) = 1/(1−0.69p)
+      //   ⇒ e(p) = (0.69p / (1 − 0.69p)) / 2.2258
+      // (The fixed-backdrop sphere is outside .hero-scene and never
+      // scales, so it's untouched.)
+      tl.fromTo('.hero-scene > .hero-framer-sphere',
+        { scale: 1 },
+        {
+          scale: 1 / 0.31,
+          force3D: true,
+          ease: function (p) {
+            return (0.69 * p / (1 - 0.69 * p)) / 2.2258;
+          }
+        },
+        0
+      );
+
+      // Same treatment for the in-hero background dot grid: it also
+      // lives inside .hero-scene, so without a counter-scale it would
+      // shrink with the card on scroll. Identical reciprocal ease keeps
+      // it at a constant visual size through the whole transition.
+      // (The fixed-backdrop #galaxy-dots is outside .hero-scene and is
+      // untouched, like the backdrop sphere.)
+      tl.fromTo('.hero-scene > #galaxy-dots-hero',
+        { scale: 1 },
+        {
+          scale: 1 / 0.31,
+          force3D: true,
+          ease: function (p) {
+            return (0.69 * p / (1 - 0.69 * p)) / 2.2258;
+          }
+        },
+        0
+      );
+
+      // ── Particle-sphere OPACITY handoff ─────────────────────────
+      // Two preloaded iframes, fixed colours, NO src/colour/URL change
+      // ever. As the circle closes the hero sphere (#79746B) fades
+      // 1 → 0 and the already-loaded dark-background sphere (#40332D)
+      // fades 0 → 1. Opacity only — no reload, no flash.
+      // Hero sphere fade — splits the difference between the original
+      // 0.25 and a longer 0.60, lingering moderately into the scroll.
+      tl.to('.hero-scene > .hero-framer-sphere',
+        { opacity: 0, duration: 0.425, ease: 'none' }, 0);
+      tl.to('.dark-bg-sphere',
+        { opacity: 1, ease: 'none' }, 0);
+
+      // Portrait scale/position — uniform scale (image never stretches).
+       // The container's 3:2 framing comes from clip-path on the parent,
+       // not from non-uniform scaling.
+      tl.to('.portrait', {
+        scale: 1.22,
+        ease: 'none',
+        force3D: true
+      }, 0);
+
+      // (Background text now runs on continuous CSS keyframes — not
+      // scroll-driven. Both rows scroll in opposite directions.)
+
+      // ─── LC logo lifecycle ─────────────────────────────────────
+      // Three phases, all scroll-scrubbed:
+      //
+      //  Phase 1 (draw) — bound to the hero pin tl. From the half-way
+      //  label, L + C strokes draw on, then fill resolves. By tl=0.50
+      //  the LC is a solid 200px mark at viewport centre.
+      //
+      //  Phase 2 (translate) — separate ScrollTrigger fires once the
+      //  hero pin ends (scroll = 40vh). LC's y translates from 0 to
+      //  -(50vh - 107) at 1px-per-scroll-px, tracking the portrait
+      //  card upward until the LC's top edge hits viewport y=24 (the
+      //  CHRIS LINDENMAYER baseline).
+      //
+      //  Phase 3 (dock) — once the LC reaches the nav line, scale
+      //  animates 1 → 0.24 over the next ~15vh. transform-origin:
+      //  'center top' keeps the top edge pinned at 24 while the
+      //  height shrinks from 200 to 48.
+      const lPath = document.querySelector('.lc-path-l');
+      const cPath = document.querySelector('.lc-path-c');
+      if (lPath && cPath) {
+        const lLength = lPath.getTotalLength();
+        const cLength = cPath.getTotalLength();
+        gsap.set('.portrait-logo-overlay', {
+          // Centring is handled by .portrait-logo-anchor in CSS — GSAP
+          // touches only y / scale / opacity here, never x / xPercent,
+          // so the LC can't drift horizontally.
+          y: () => window.innerHeight * 0.5 - 107,
+          scale: 1,
+          opacity: 0,
+          transformOrigin: 'center top',
+          force3D: true
+        });
+        gsap.set(lPath, { strokeDasharray: lLength, strokeDashoffset: lLength });
+        gsap.set(cPath, { strokeDasharray: cLength, strokeDashoffset: cLength });
+        // Start the strokes + fill as white; they transition to the
+        // resting #F64501 across the draw phase.
+        gsap.set([lPath, cPath], { stroke: '#ffffff', fill: '#ffffff' });
+
+        // Phase 1 — draw (inside hero pin timeline). Overlay opacity
+        // fades 0 → 1 alongside the stroke draw so the lime ink ramps
+        // in instead of popping. The fade runs the first half of the
+        // draw; by the time the L is roughly halfway across, the
+        // overlay is at full opacity.
+        tl.addLabel('logoDrawStart', 0.25);
+        tl.fromTo('.portrait-logo-overlay',
+          { opacity: 0 },
+          { opacity: 1, duration: 0.04, ease: 'none' },
+          'logoDrawStart');
+        tl.to(lPath, { strokeDashoffset: 0, duration: 0.20, ease: 'none' }, 'logoDrawStart');
+        tl.to(cPath, { strokeDashoffset: 0, duration: 0.20, ease: 'none' }, 'logoDrawStart+=0.05');
+        tl.to([lPath, cPath], { fillOpacity: 1, duration: 0.10, ease: 'none' }, 'logoDrawStart+=0.15');
+        // Colour transition white → #F64501 across the full draw phase
+        // (logoDrawStart → logoDrawStart+0.25). Lands on the resting
+        // colour right as the fill resolves.
+        tl.to([lPath, cPath],
+          { stroke: '#F64501', fill: '#F64501', duration: 0.25, ease: 'none' },
+          'logoDrawStart');
+
+        // Phase 2 — translate from centred (y = 50vh − 107) down to the
+        // docked position (y = 0, i.e. top: 24px from CSS), 1:1 with
+        // scroll. Anchoring the docked state at y=0 means viewport
+        // resize doesn't shift the LC — top: 24px is constant.
+        gsap.fromTo('.portrait-logo-overlay',
+          { y: () => window.innerHeight * 0.5 - 107 },
+          {
+            y: 0,
+            ease: 'none',
+            scrollTrigger: {
+              start: () => window.innerHeight * 0.4,
+              end:   () => window.innerHeight * 0.4 + (window.innerHeight * 0.5 - 107),
+              scrub: true,
+              invalidateOnRefresh: true
+            }
+          }
+        );
+
+        // Phase 3 — dock. Top stays at 24 (transform-origin: center
+        // top), scale 1 → 0.229 shrinks the 166px mark to 38px (same
+        // docked size as before). Plays over ~15vh of scroll after the
+        // LC reaches the nav line.
+        gsap.to('.portrait-logo-overlay', {
+          scale: 0.229,
+          ease: 'power2.out',
+          scrollTrigger: {
+            start: () => window.innerHeight * 0.4 + (window.innerHeight * 0.5 - 107),
+            end:   () => window.innerHeight * 0.4 + (window.innerHeight * 0.5 - 107) + window.innerHeight * 0.15,
+            scrub: true,
+            invalidateOnRefresh: true
+          }
+        });
+      }
+    })();
+  </script>
+
+
+  <script>
+    /* ─── Image accordion module ───────────────────────────────────
+       Owns ALL of the accordion's state and geometry:
+         • one source of truth for the scroll position (scrollPos)
+         • one temporary click override, layered over the scroll value
+         • one width calculation shared by both
+       The scroll timeline does not compute widths — it only pushes a
+       position in via setScrollPos(). Hover tweens the same value.
+       Runs regardless of prefers-reduced-motion so the composition is
+       laid out correctly either way; only the scroll choreography is
+       gated (that lives in the timeline script below). */
+    (function () {
+      var acc = document.querySelector('.acc');
+      if (!acc) return;
+
+      var track  = acc.querySelector('.acc__track');
+      var PANELS = Array.prototype.slice.call(acc.querySelectorAll('.acc__panel'));
+      var N = PANELS.length;
+      if (!N || !track) return;
+
+      // Figma 2042:156875
+      var ACC_W_DESIGN = 1440, ACC_H_DESIGN = 640, ACC_COLLAPSED_DESIGN = 120;
+      // Clearance above the accordion, shared with the quote timeline so
+      // WORK and the composition can't drift apart.
+      var WORK_LIFT = 96, ACC_GAP = 32;
+      // WORK's landing x, and therefore the accordion's inset on BOTH
+      // sides: the composition's left edge lines up exactly with WORK's
+      // left edge, and its right edge ends the same distance in from the
+      // right of the viewport. One constant so they cannot drift apart.
+      var WORK_LAND_X = 96;
+      // Lifts the whole composition off the bottom of the viewport. Kept
+      // out of the height maths below on purpose: this MOVES the block,
+      // it does not shrink it, so the Figma 640 is preserved.
+      var ACC_RAISE = 152;
+      // The title and sub-line now sit INSIDE the composition, so this is
+      // their inset from its bottom-left / bottom-right corners rather
+      // than a gap above it.
+      var CHROME_INSET = 40;
+      // How far the composition overshoots the viewport's right edge while
+      // it is entering, so its rounded right corners are clipped away and
+      // it reads as bleeding off-screen rather than as a floating card.
+      // Read from the CSS radius at layout time, so the two can't drift:
+      // twice the radius clears the whole curve.
+      var ACC_BLEED = 24;
+
+      var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var hasGsap = !!window.gsap;
+
+      // Collapsed width scales below the design width so narrow screens
+      // don't reduce the active panel to a sliver. Floored so a collapsed
+      // panel stays a usable hover target.
+      function collapsedWidth() {
+        var w = window.innerWidth * (ACC_COLLAPSED_DESIGN / ACC_W_DESIGN);
+        return Math.max(40, Math.min(ACC_COLLAPSED_DESIGN, Math.round(w)));
+      }
+
+      // Scroll and hover are kept as SEPARATE values and combined at
+      // render time, rather than both writing one shared position:
+      //   displayPos = scrollPos + (pick - scrollPos) * blend
+      // blend 0 = scroll owns it outright, 1 = the click owns it outright.
+      // Nothing can strand: whatever blend happens to be, a scroll update
+      // still renders, so the accordion can never stop following scroll.
+      // And hover never writes scrollPos, so scroll progress is untouched.
+      var scrollPos  = 0;           // last position the scroll timeline pushed
+      // The picked panel is a CONTINUOUS, tweened value, not an integer.
+      // Setting it instantly would make a second click jump: blend is
+      // already 1 by then, so there is no interpolation left to travel and
+      // the display snaps straight to the new panel.
+      var pick       = { v: 0 };    // panel the user clicked (tweened)
+      var pickTween  = null;
+      var blend      = { v: 0 };
+      var blendTween = null;
+      var picked     = false;       // is a click override currently in force
+      var pickedAt   = 0;           // scrollPos when the click happened
+      // How far the scroll index must move before scroll takes control
+      // back. A click has no 'leave' event, so this is its release: big
+      // enough to ignore scroll jitter, small enough that scrolling on
+      // clearly hands control back.
+      var PICK_RELEASE = 0.25;
+
+      function displayPos() {
+        return scrollPos + (pick.v - scrollPos) * blend.v;
+      }
+
+      // ─── Entrance choreography ─────────────────────────────────────
+      // A single 0..1 value, so the timeline scrubs one number and every
+      // width still comes from this module.
+      //   0 .. GROW : container 1 grows leftward — its RIGHT edge stays
+      //               pinned to the viewport's right edge while its left
+      //               edge travels to 0, so it ends spanning 100% width.
+      //   GROW .. 1 : container 1's right edge retracts to its resting
+      //               width while containers 2-4, which are already in
+      //               place at zero width, expand out in sequence behind
+      //               it. They never travel — they are revealed.
+      // Widths are derived so the row's total is always exactly
+      // W * a, which is what keeps the right edge pinned in phase one and
+      // the container exactly full in phase two.
+      // Entrance beats, as shares of the whole entrance:
+      //   GROW  image 1's left edge travels from the VIEWPORT's right edge
+      //         to WORK's left edge; its right edge stays on the screen
+      //         edge, so it is briefly wider than the final container.
+      //   PULL  its right edge pulls in to the 96px margin.
+      //   rest  panels 2-4 expand out (starting ENT_OVERLAP early, so the
+      //         new PULL beat doesn't reintroduce a stall).
+      // GROW is the long beat on purpose: image 1 must not reach the
+      // shared left-alignment line before WORK does, and the timeline
+      // derives the entrance duration from this share to guarantee it.
+      var ENT_GROW    = 0.58;
+      var ENT_PULL    = 0.13;
+      var ENT_OVERLAP = 0.24;
+      var ENT_STAGGER = 0.14;
+      var entranceP   = 1;      // 1 = complete (the reduced-motion default)
+
+      // Two eases, because the phases want different characters:
+      //  • the sweep across the viewport reads better easing in AND out —
+      //    a plain ease-out dumps most of the travel into the first few
+      //    pixels of scroll and then crawls.
+      //  • each panel expanding out is short, so a gentle in-out keeps the
+      //    sequence soft rather than poppy.
+      function parseEase(name, fallback) {
+        return (window.gsap && gsap.parseEase) ? gsap.parseEase(name) : fallback;
+      }
+      var linear      = function (x) { return x; };
+      var easeGrow    = parseEase('power3.inOut', linear);
+      // OUT only, deliberately. inOut made the pull accelerate from a dead
+      // stop, and since GROW ends decelerating that put two eased ends
+      // back to back: the composition visibly halted for ~0.45s between the
+      // left edge landing and the right edge starting to retract, then
+      // lurched. Leaving at speed and decelerating into 96 reads as one
+      // continuous motion handing off from the grow.
+      var easePull    = parseEase('power2.out', linear);
+      var easeExpand  = parseEase('power2.inOut', linear);
+
+      // Returns the row's left and right edges in VIEWPORT coordinates,
+      // plus each narrow panel's expansion. Expressing it as two edges
+      // rather than one width keeps the three beats independent: GROW
+      // moves only the left edge, PULL moves only the right.
+      function entranceParts() {
+        if (entranceP >= 1) return null;          // hand over to the accordion
+        var Wv = acc.clientWidth;
+        var i, b = [];
+
+        // While entering, the row's right edge sits ACC_BLEED PAST the
+        // viewport edge. .acc clips there, so the rounded right corners are
+        // cut off and the composition reads as bleeding off-screen.
+        var Rout = Wv + ACC_BLEED;
+
+        // GROW: left edge, from off the right of the screen -> WORK's left
+        // edge. Starting at Rout (not Wv) keeps its width at exactly 0 on
+        // the first frame, so nothing peeks out before it begins.
+        var pGrow = Math.min(1, entranceP / ENT_GROW);
+        var L = Rout - easeGrow(pGrow) * (Rout - WORK_LAND_X);
+
+        // PULL: right edge, from past the screen edge -> the 96px margin.
+        // Travels ACC_BLEED further than before, which is what brings the
+        // rounded corners back into view as it settles.
+        var pPull = Math.max(0, Math.min(1, (entranceP - ENT_GROW) / ENT_PULL));
+        var R = Rout - easePull(pPull) * (ACC_BLEED + WORK_LAND_X);
+
+        // Panels 2-4, starting ENT_OVERLAP before the pull completes.
+        var bStart = ENT_GROW + ENT_PULL - ENT_OVERLAP;
+        var q = (entranceP - bStart) / (1 - bStart);   // negative before bStart
+        var span = 1 - (N - 2) * ENT_STAGGER;
+        for (i = 0; i < N - 1; i++) {
+          var t = (q - i * ENT_STAGGER) / span;
+          b[i] = easeExpand(Math.max(0, Math.min(1, t)));
+        }
+        return { L: L, R: R, b: b };
+      }
+
+      // Entrance progress at which the row's LEFT edge reaches a given x.
+      // Inverts the grow ease numerically against GSAP's own curve, so it
+      // stays correct if that ease, the bleed or the margin ever change.
+      function entranceProgressForLeft(targetX) {
+        var Wv = acc.clientWidth;
+        if (!Wv) return ENT_GROW;
+        var Rout = Wv + ACC_BLEED;
+        var target = (Rout - targetX) / (Rout - WORK_LAND_X);
+        target = Math.max(0, Math.min(1, target));
+        var lo = 0, hi = 1, mid;
+        for (var i = 0; i < 40; i++) {
+          mid = (lo + hi) / 2;
+          if (easeGrow(mid) < target) { lo = mid; } else { hi = mid; }
+        }
+        return ((lo + hi) / 2) * ENT_GROW;
+      }
+
+      function setEntrance(p) {
+        entranceP = Math.max(0, Math.min(1, p));
+        render();
+      }
+
+      // Title and sub-line both belong to whichever image is ACTIVE, and
+      // both are justified to that image's right edge — so on the way to
+      // the next image they ride its collapsing edge left and dissolve,
+      // then the incoming pair plays in against the opening one.
+      //
+      // The fade envelope is applied ONLY while moving away from a slide.
+      // Coming back in, the incoming title and line run their own entrance
+      // animations, and an envelope here would fight them.
+      var subEl   = document.querySelector('.acc-sub');
+      var titleEl = document.querySelector('.acc-title');
+      var chromeIdx = 0, chromeLastD = 0;
+      // A slide with no title, or no sub-line, must HIDE that piece rather
+      // than keep showing the previous slide's. trackChrome rewrites both
+      // opacities every frame, so a one-off `style.opacity = 0` set on slide
+      // change was overwritten on the very next frame: teledynamics' line
+      // stayed on screen over slb and givebacks.
+      var mutedTitle = false, mutedSub = false;
+
+      function trackChrome(pos, widths, C, extra, W) {
+        var idx = Math.max(0, Math.min(widths.length - 1, Math.round(pos)));
+        var d   = Math.abs(pos - idx);          // 0 at rest, 0.5 mid-transition
+
+        var swapped = false;
+        if (idx !== chromeIdx) {
+          chromeIdx = idx;
+          swapped = true;
+          var api = window.PortfolioAccordion;
+          if (api && api.onSlideChange) api.onSlideChange(idx);
+        }
+
+        // The two edges of the ACTIVE image. The sub-line is inset from the
+        // right, the title from the left, and both are walked from the same
+        // widths every frame. The title used to be pinned once at layout to
+        // image one's left edge, so image two's title sat over image one's
+        // slot instead of its own: the sub-line tracked and the title did
+        // not. Every image now carries its title the way image one does.
+        var left = WORK_LAND_X, right = WORK_LAND_X;
+        for (var i = 0; i < idx; i++) left += widths[i];
+        right = left + widths[idx];
+        if (subEl)   subEl.style.insetInlineEnd     = (W - right + CHROME_INSET) + 'px';
+        if (titleEl) titleEl.style.insetInlineStart = (left + CHROME_INSET) + 'px';
+
+        // `d` is measured against whichever image is active, so on the frame
+        // the active image CHANGES the previous value refers to a different
+        // one and the comparison is meaningless. Both are ~0.5 at a swap, so
+        // it read as "moving away" and drove the incoming title's opacity
+        // straight to 1 - 2(0.5) = 0 — it appeared and instantly vanished.
+        // Re-baseline on a swap and let the new title's own animation run.
+        var movingAway = !swapped && d >= chromeLastD;
+        chromeLastD = d;
+
+        // Enforced ahead of the movingAway gate below, which returns early:
+        // a muted piece must never be left visible by a frame that skips
+        // the opacity writes.
+        if (mutedSub && subEl)     subEl.style.opacity = 0;
+        if (mutedTitle && titleEl) titleEl.style.opacity = 0;
+
+        if (!movingAway) return;
+        var open = extra > 0 ? (widths[idx] - C) / extra : 1;
+        open = Math.max(0, Math.min(1, open));
+        // Cubed — a little faster off the mark, so the line has cleared
+        // before the next image is meaningfully open.
+        if (subEl) subEl.style.opacity = mutedSub ? 0 : open * open * open;
+        var k = Math.max(0, 1 - d * 2);
+        if (titleEl) titleEl.style.opacity = mutedTitle ? 0 : k * k;
+      }
+
+      // Share of the expandable width a panel must hold to count as open.
+      // Not 1: the resting share never quite reaches it in floating point,
+      // and a panel a hair off its rest is still visually wide open.
+      var OPEN_AT = 0.92;
+
+      function render() {
+        var W = acc.clientWidth;
+        if (!W) return;
+        // The container is full-bleed, so the resting row is the viewport
+        // minus a WORK_LAND_X margin on each side.
+        var content = W - 2 * WORK_LAND_X;
+        var C = collapsedWidth();
+        // A narrow viewport can leave N collapsed panels with nothing (or
+        // negative) for the active one. Cap C so it always keeps at least
+        // a panel's worth of width.
+        C = Math.min(C, Math.floor(content / (N + 1)));
+        var extra = content - N * C;                 // what the active panel adds
+        acc.style.setProperty('--acc-expanded', (C + extra) + 'px');
+
+        var ent = entranceParts();
+        if (ent) {
+          var narrow = 0, k;
+          for (k = 1; k < N; k++) {
+            var wk = C * ent.b[k - 1];
+            PANELS[k].style.width = wk + 'px';
+            narrow += wk;
+          }
+          var w0 = Math.max(0, (ent.R - ent.L) - narrow);
+          PANELS[0].style.width = w0 + 'px';
+          // The image is sized from --acc-expanded, but during the entrance
+          // panel 1 is far WIDER than its resting width (up to the full
+          // bleed), so a fixed value leaves bare panel showing at its edges.
+          // Track the panel while it is oversized; it settles back to the
+          // resting width as the entrance finishes.
+          acc.style.setProperty('--acc-expanded', Math.max(C + extra, w0) + 'px');
+          track.style.transform = 'translateX(' + ent.L + 'px)';
+          // Panel 1 runs WIDER than its resting width during the grow, so
+          // clamp: the openness that matters is "not retracted".
+          var open0 = extra > 0 ? (w0 - C) / extra : 1;
+          open0 = Math.max(0, Math.min(1, open0));
+          for (k = 0; k < N; k++) {
+            PANELS[k].classList.toggle('is-open', k === 0 && open0 >= OPEN_AT);
+          }
+
+          var entW = [w0];
+          for (k = 1; k < N; k++) entW.push(C * ent.b[k - 1]);
+          trackChrome(0, entW, C, extra, W);
+          return;
+        }
+        track.style.transform = 'translateX(' + WORK_LAND_X + 'px)';
+
+        var pos = Math.max(0, Math.min(N - 1, displayPos()));
+
+        // Triangular partition of unity: the weights ALWAYS sum to exactly
+        // 1, so the panel widths always sum to exactly W. The outer
+        // container can therefore never change width and no layout shift
+        // is possible at any intermediate position.
+        var t = [], sum = 0, i;
+        for (i = 0; i < N; i++) { t[i] = Math.max(0, 1 - Math.abs(pos - i)); sum += t[i]; }
+        if (sum <= 0) { t = []; for (i = 0; i < N; i++) t[i] = 0; t[Math.round(pos)] = 1; sum = 1; }
+
+        var widths = [];
+        for (i = 0; i < N; i++) {
+          var share = t[i] / sum;
+          var wi = C + share * extra;
+          widths.push(wi);
+          PANELS[i].style.width = wi + 'px';
+          PANELS[i].classList.toggle('is-active', share > 0.5);
+          // Fully open, not merely the widest: mid-transition both
+          // neighbours are part way and neither should be a link yet.
+          PANELS[i].classList.toggle('is-open', share >= OPEN_AT);
+        }
+        trackChrome(pos, widths, C, extra, W);
+      }
+
+      function layout() {
+        // Height is capped at the Figma value and only ever reduced, so
+        // the section can never become taller than the design.
+        var sec = document.querySelector('.next-section');
+        var work = document.querySelector('.next-section .word-keep');
+        var block = document.querySelector('.next-section .quote-block');
+        var clear = 200;
+        if (sec && work && block) {
+          var secTop = sec.getBoundingClientRect().top;
+          clear = (block.getBoundingClientRect().top - secTop - WORK_LIFT)
+                + work.getBoundingClientRect().height + ACC_GAP;
+        }
+        var h = Math.min(ACC_H_DESIGN, Math.max(240, window.innerHeight - clear));
+        acc.style.blockSize = h + 'px';
+        acc.style.insetBlockEnd = ACC_RAISE + 'px';
+        var radius = parseFloat(getComputedStyle(track).borderTopRightRadius);
+        ACC_BLEED = (radius > 0 ? radius : 12) * 2;
+        // Full-bleed and clipping at the VIEWPORT edges: image 1 starts
+        // at the screen's right edge, outside the final container bounds,
+        // so the 96px margins are applied in the width maths below rather
+        // than as a box inset.
+        acc.style.insetInlineStart = '0px';
+        acc.style.insetInlineEnd   = '0px';
+        // Title rides the slider's top edge, aligned to its left margin.
+        // Image 1's resting right edge, which the sub-line is justified to.
+        // NOTE: W is a local of render(), not of this function — read the
+        // width here rather than reaching for it.
+        var Wl = acc.clientWidth;
+        var contentW = Wl - 2 * WORK_LAND_X;
+        var Csub = Math.min(collapsedWidth(), Math.floor(contentW / (N + 1)));
+        var img1Right = WORK_LAND_X + (contentW - (N - 1) * Csub);
+
+        var sub = document.querySelector('.acc-sub');
+        if (sub) {
+          // Same bottom as the title, so the two sit on a shared baseline.
+          // The horizontal position is NOT set here — render() owns it, so
+          // the line can follow image 1's right edge as that panel collapses.
+          sub.style.insetBlockEnd    = (ACC_RAISE + CHROME_INSET) + 'px';
+          sub.style.insetInlineStart = 'auto';
+        }
+
+        var title = document.querySelector('.acc-title');
+        if (title) {
+          title.style.insetBlockEnd = (ACC_RAISE + CHROME_INSET) + 'px';
+          // Inset from the ACTIVE image's left edge, inside the frame. This
+          // is only the starting value for image one; render() owns it from
+          // then on so the title follows whichever image is active, the same
+          // way the sub-line follows that image's right edge.
+          title.style.insetInlineStart = (WORK_LAND_X + CHROME_INSET) + 'px';
+          title.style.insetInlineEnd   = 'auto';
+        }
+        render();
+      }
+
+      // Scroll is the primary input, and stays exactly 1:1 with the
+      // timeline: at blend 0 the display IS scrollPos, no extra lag.
+      function setScrollPos(p) {
+        scrollPos = p;
+        // Scrolling onward reclaims control from a click.
+        if (picked && Math.abs(p - pickedAt) > PICK_RELEASE) releaseOverride();
+        render();
+      }
+
+      // A click temporarily overrides the scroll position by fading
+      // `blend` in. scrollPos keeps updating underneath the whole time, so
+      // releasing returns to wherever the scroll has since reached rather
+      // than a stale captured value. The click never writes scrollPos, so
+      // scroll progress and the scroll-derived index are untouched.
+      var PICK_DUR = 0.6, PICK_EASE = 'power2.inOut';
+
+      function overrideTo(i) {
+        picked   = true;
+        pickedAt = scrollPos;
+        if (blendTween) blendTween.kill();
+        if (pickTween)  pickTween.kill();
+        if (!hasGsap || prefersReduced) { pick.v = i; blend.v = 1; render(); return; }
+        // Starting fresh: anchor the pick on the scroll position first, so
+        // fading blend in doesn't drag the display through a stale value.
+        if (blend.v === 0) pick.v = scrollPos;
+        // Both tweens share a duration and ease, so the two factors of
+        // displayPos move together and the result reads as one motion.
+        pickTween = gsap.to(pick, {
+          v: i, duration: PICK_DUR, ease: PICK_EASE, onUpdate: render
+        });
+        blendTween = gsap.to(blend, {
+          v: 1, duration: PICK_DUR, ease: PICK_EASE, onUpdate: render
+        });
+      }
+      function releaseOverride() {
+        picked = false;
+        if (blendTween) blendTween.kill();
+        if (!hasGsap || prefersReduced) { blend.v = 0; render(); return; }
+        blendTween = gsap.to(blend, {
+          v: 0, duration: PICK_DUR, ease: PICK_EASE, onUpdate: render
+        });
+      }
+
+      function activate(i) {
+        // Clicking the panel that is already expanded hands control back.
+        if (picked && Math.round(pick.v) === i) { releaseOverride(); return; }
+        overrideTo(i);
+      }
+
+      PANELS.forEach(function (panel, i) {
+        panel.addEventListener('click', function () { activate(i); });
+        // Keyboard equivalent of the click, so the interaction is not
+        // pointer-only. Focus alone deliberately does NOT expand.
+        panel.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            activate(i);
+          }
+        });
+      });
+
+      layout();
+      window.addEventListener('resize', layout);
+
+      // ─── Page exit ─────────────────────────────────────────────────
+      // Clicking through to a project plays the destination's intro in
+      // REVERSE before navigating, so the two pages read as one move: the
+      // top chrome fades and the slider collapses upward — the mirror of
+      // the envision page's image growing downward. It holds its horizontal
+      // position; only the height changes.
+      (function () {
+        var EASE = 'cubic-bezier(.65, 0, .35, 1)';
+        var DUR  = 900;     // the collapse
+        var FADE = 450;     // the chrome
+
+        // ── Destination theme, per project ────────────────────────────
+        // Keyed by href, so the transition is driven by DATA rather than by
+        // which project happens to be clicked. A project with no entry keeps
+        // the plain exit: there is no panel, because there is no destination
+        // colour to carry across. Give a project a colour here and it gets
+        // the continuous handover for free.
+        //
+        // The value MUST equal the destination page's own background exactly.
+        // envision.html's --ground is this same beige; if the two drifted the
+        // handover would read as the flash this is here to remove.
+        var PROJECT_THEME = { 'envision.html': '#EEE9DF' };
+
+        // Whether a theme needs DARK nav ink is derived from the colour, so
+        // adding a project to PROJECT_THEME is the only step: a light ground
+        // gets dark nav text and a dark one keeps the light text.
+        function isLight(hex) {
+          if (!hex) return false;
+          var h = hex.replace('#', '');
+          var c = [0, 2, 4].map(function (i) {
+            var v = parseInt(h.substr(i, 2), 16) / 255;
+            return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          });
+          return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) > 0.4;
+        }
+
+        // The panel starts below the fold and rises BEHIND the slider, so the
+        // two motions overlap instead of the panel wiping over the top of the
+        // exit. It is stacked at z-index 0 inside .next-section, under .acc
+        // (z-index 1) and its chrome (z-index 2).
+        var VEIL_DELAY = 100;   // after the collapse starts: they overlap
+        // Shorter than the collapse, so the two layers move at visibly
+        // different RATES rather than travelling together. The panel covers
+        // 100vh in this time while the slider takes DUR to close 640px:
+        // roughly 1.9x the speed. 520ms here was 2.5x and read as a snap.
+        // Its own ease is an ease-OUT, not the collapse's ease-in-out, so it
+        // leaves ahead and settles while the slider is still moving.
+        var VEIL_DUR   = 680;
+        var VEIL_EASE  = 'cubic-bezier(.22, .72, .38, 1)';
+
+        // .next-section is transformed by its pin, so `position: fixed` inside
+        // it resolves against the section, not the viewport. Measure instead
+        // and place the panel so it covers the viewport exactly, whatever the
+        // section's offset happens to be at the moment of the click.
+        function makeVeil(color) {
+          var host = document.querySelector('.next-section');
+          if (!host) return null;
+          var r = host.getBoundingClientRect();
+          var el = document.createElement('div');
+          el.setAttribute('data-route-veil', '');
+          el.style.cssText =
+            'position:absolute;z-index:0;pointer-events:none;background:' + color +
+            ';left:' + (-r.left) + 'px;top:' + (-r.top) + 'px' +
+            ';width:' + window.innerWidth + 'px;height:' + window.innerHeight + 'px';
+          host.appendChild(el);
+          return el;
+        }
+
+        function fadeOut(sel) {
+          var el = document.querySelector(sel);
+          if (!el) return;
+          el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }],
+                     { duration: FADE, easing: EASE, fill: 'forwards' });
+        }
+
+        function exitTo(href) {
+          var theme = PROJECT_THEME[href];
+          var veil  = theme ? makeVeil(theme) : null;
+
+          // Nav text and the centred logo go first.
+          // The nav deliberately stays PUT: it is a fixed element common to
+          // both pages, so fading it out and back in read as a stutter across
+          // the seam. Only its ink changes, and only as the panel passes it.
+          // WORK leaves with the logo mark: they are the two pieces of the
+          // slider's own chrome that sit outside the composition, so one
+          // going while the other stayed read as a leftover.
+          ['.portrait-logo-anchor', '.next-section .word-keep',
+           '.acc-title', '.acc-sub'].forEach(fadeOut);
+
+          // Reverse of the destination's reveal: pin the top, free the
+          // bottom, and collapse the height to zero while sliding right.
+          var rect   = acc.getBoundingClientRect();
+          var parent = (acc.offsetParent || acc.parentNode).getBoundingClientRect();
+          var topPx  = Math.round(rect.top - parent.top);
+          var fullH  = Math.round(rect.height);
+
+          acc.style.insetBlockStart = topPx + 'px';
+          acc.style.insetBlockEnd   = 'auto';
+          acc.style.blockSize       = fullH + 'px';
+          // Pin the panels at full height so they are CROPPED as the box
+          // closes rather than squashed — .acc already clips.
+          PANELS.forEach(function (p) { p.style.height = fullH + 'px'; });
+
+          // Height only — it stays put on the x axis. The destination's
+          // intro slides in horizontally, but mirroring that on the way out
+          // made the slider drift as it closed; collapsing in place reads
+          // cleaner.
+          var a = acc.animate(
+            [{ height: fullH + 'px' }, { height: '0px' }],
+            { duration: DUR, easing: EASE, fill: 'forwards' }
+          );
+          // With a theme, the navigation waits for the PANEL, not the
+          // collapse: once the beige covers the viewport the route change is
+          // invisible, because the page underneath it is the same colour.
+          // Navigating on the collapse instead would swap the document while
+          // the panel was still rising, which is the flash we are removing.
+          // Wait for BOTH, not for whichever was tuned to be longest. The
+          // panel is behind the slider, so it covering the viewport does not
+          // hide the slider: cutting the route at the panel's finish would
+          // chop the collapse mid-move. The panel arrives first and the
+          // slider then finishes closing ONTO it.
+          // The panel rises from the bottom, so it reaches the nav LAST. Flip
+          // the ink to land exactly as it arrives: any earlier and the nav
+          // goes dark over a still-dark page; any later and it sits light on
+          // beige. VEIL_DELAY + VEIL_DUR is that moment.
+          if (veil) {
+            var navEl = document.querySelector('site-nav');
+            if (navEl && window.gsap) {
+              var want = isLight(theme) ? 1 : 0;
+              var ink  = { v: parseFloat(getComputedStyle(navEl).getPropertyValue('--nav-over')) || 0 };
+              window.__navInkLocked = true;
+              gsap.to(ink, {
+                v: want, duration: 0.26, ease: 'none',
+                delay: (VEIL_DELAY + VEIL_DUR - 220) / 1000,
+                onUpdate: function () { navEl.style.setProperty('--nav-over', ink.v); }
+              });
+            }
+          }
+
+          var waits = [a.finished];
+          if (veil) {
+            waits.push(veil.animate(
+              [{ transform: 'translateY(100%)' }, { transform: 'translateY(0%)' }],
+              { duration: VEIL_DUR, delay: VEIL_DELAY, easing: VEIL_EASE, fill: 'both' }
+            ).finished);
+          }
+          var go = function () { window.location.href = href; };
+          Promise.all(waits).then(go).catch(go);
+        }
+
+        // Reduced motion: no large sliding move, but still no route flash.
+        // The panel appears in place and fades up, so the destination is
+        // already behind it when the document changes.
+        function exitToReduced(href) {
+          var theme = PROJECT_THEME[href];
+          var veil  = theme ? makeVeil(theme) : null;
+          if (!veil) return false;
+          var g = veil.animate([{ opacity: 0 }, { opacity: 1 }],
+                               { duration: 200, easing: 'linear', fill: 'both' });
+          g.finished.then(function () { window.location.href = href; })
+                    .catch(function () { window.location.href = href; });
+          return true;
+        }
+
+        acc.addEventListener('click', handleExit, true);
+        var sub = document.querySelector('.acc-sub');
+        if (sub) sub.addEventListener('click', handleExit, true);
+
+        function handleExit(e) {
+          var link = e.target.closest && e.target.closest('a[href]');
+          if (!link) return;
+          // Leave modified clicks alone — new tab, download, etc.
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+          var href = link.getAttribute('href');
+          if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            // Only intercept if there is something to carry across; otherwise
+            // let the browser navigate normally, exactly as before.
+            if (!exitToReduced(href)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          exitTo(href);
+        }
+      })();
+
+      window.PortfolioAccordion = {
+        el: acc,
+        panels: PANELS,
+        count: N,
+        layout: layout,
+        setEntrance: setEntrance,
+        entranceProgressForLeft: entranceProgressForLeft,
+        WORK_LAND_X: WORK_LAND_X,
+        ENT_GROW: ENT_GROW,
+        ENT_PULL: ENT_PULL,
+        render: render,
+        setScrollPos: setScrollPos,
+        // Told by the slide-change handler which pieces this slide has.
+        setChromeMuted: function (t, sb) { mutedTitle = !!t; mutedSub = !!sb; },
+        WORK_LIFT: WORK_LIFT,
+        ACC_GAP: ACC_GAP
+      };
+    })();
+  </script>
+
+  <script>
+    /* ─── Quote reveal — cover-plate per-row reveal.
+       For each row, the lime cover plate slides in from the left and
+       briefly fully covers the row. While it is on top, the hidden
+       text opacity flips to 1 underneath. The cover then slides out
+       to the right and fades, leaving the text revealed. Each row
+       starts 0.12 after the prior so multiple plates can be moving
+       at once — smooth editorial cascade, not one-by-one. */
+    (function () {
+      if (!window.gsap || !window.ScrollTrigger) return;
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduced) return;
+
+      const section = document.querySelector('.next-section');
+      if (!section) return;
+      const lineMasks = gsap.utils.toArray('.next-section .quote-block .line-mask');
+      if (!lineMasks.length) return;
+
+      gsap.set('.next-section .line-text',  { opacity: 0 });
+      gsap.set('.next-section .line-cover', { clipPath: 'inset(0 100% 0 0 round 999px)' });
+      gsap.set('.quote-block__cite',        { opacity: 0, y: 10 });
+      // <em> is inline by default — make it inline-block so the scale
+      // tween below actually applies.
+      gsap.set('.word-keep', { display: 'inline-block' });
+
+      // WORK settles this far ABOVE the quote block's original top, to
+      // clear headroom for the project slide entering beneath it.
+      // Read from the accordion module so WORK and the composition share
+      // one value: raising it lifts both and keeps ACC_GAP between them.
+      var WORK_LIFT = (window.PortfolioAccordion || {}).WORK_LIFT || 88;
+      // Nudges WORK's landing only. WORK_LIFT is deliberately SHARED with
+      // the accordion's height calculation so the two cannot drift apart,
+      // so moving WORK by editing it would resize the slider as a side
+      // effect. This offset applies to the landing y and nothing else.
+      var WORK_DROP = 14;
+      // WORK's final left edge. Read from the accordion module, which
+      // uses the same value as its left/right inset, so WORK's left edge
+      // and the composition's left edge line up exactly.
+      var WORK_LAND_X = (window.PortfolioAccordion || {}).WORK_LAND_X || 96;
+
+      // ─── Timing ──────────────────────────────────────────────────
+      // Declared before the timeline because the pin length is derived
+      // from them. All width maths lives in the accordion module; this
+      // only decides WHEN things happen.
+      var ACC = window.PortfolioAccordion;
+
+      // WORK's exit. Deliberately NOT tied to ACC_IN_START: WORK's motion
+      // is tuned, and moving the composition shouldn't drag WORK's rise
+      // and its slide/shrink into overlapping each other.
+      var PS_CUE      = 1.67;   // the frame the quote text reaches opacity 0
+      var PS_WORK_DUR = 0.90;   // unchanged from the tuned value
+      var WORK_LANDS  = PS_CUE + PS_WORK_DUR;   // 2.57
+
+      // Starts slightly before the quote text has fully faded, so the
+      // composition is already on its way in rather than waiting for an
+      // empty frame.
+      var ACC_IN_START = 1.58;
+
+      // WORK MUST REACH THE LEFT EDGE FIRST. The composition's left edge
+      // and WORK land on the same x, so whichever arrives second reads as
+      // the one being aligned to. The GROW beat — image 1's left edge
+      // travelling to that line — therefore has to finish AFTER WORK does.
+      // GROW ends at ACC_IN_START + growShare * ACC_IN_DUR, so solve that
+      // for the duration rather than hand-tuning a number that a later
+      // tweak to ACC_IN_START would silently break.
+      var ACC_LAND_GAP   = 0.05;                     // WORK settles first, by this much
+      var ACC_GROW_SHARE = (ACC && ACC.ENT_GROW) || 0.58;
+      var ACC_IN_DUR = Math.max(
+        1.26,
+        (WORK_LANDS + ACC_LAND_GAP - ACC_IN_START) / ACC_GROW_SHARE
+      );
+      var ACC_IN_END = ACC_IN_START + ACC_IN_DUR;
+
+      // Dwell / travel ratio for the scrubbed phase, in relative units.
+      // Each image rests fully expanded for ACC_DWELL before ACC_MOVE
+      // carries it to the next — so the states are clearly readable but
+      // the redistribution stays continuously tied to scroll.
+      // ACC_MOVE is what a transition COSTS IN SCROLL: raising it relative
+      // to ACC_DWELL buys each 1->2->3->4 hand-off more distance without
+      // making the resting states drag.
+      // The FIRST dwell is shorter than the rest: by the time the slider
+      // has landed the reader has already watched the whole entrance, so a
+      // full-length rest there just reads as dead scroll before anything
+      // happens. The later dwells are the first time each new image is
+      // seen, so they keep their length.
+      var ACC_DWELL = 0.8, ACC_DWELL_FIRST = 0.35, ACC_MOVE = 1.8;
+      // Relative units total 0.35 + 3x0.8 + 3x1.8 = 8.15, down from 8.6.
+      // ACC_DUR is scaled by the same ratio (4.2 x 8.15/8.6 = 3.98) so the
+      // scroll cost of every OTHER beat is left exactly as it was — only
+      // the first dwell gets shorter.
+      var ACC_DUR = 3.98;
+
+      // Pin length, derived so scroll-per-timeline-unit stays at the
+      // original 370% / 2.45 ratio. Hardcoding a percentage meant every
+      // timing change needed a matching edit here; this cannot drift.
+      var TL_TOTAL = ACC_IN_END + ACC_DUR;
+      // In PIXELS, measured once, not as a percentage of viewport height.
+      // A '%' end is re-evaluated against the new viewport on every
+      // refresh, so changing the window HEIGHT rescaled the entire pin and
+      // remapped the current scroll position onto a different moment in the
+      // timeline — enough to throw the reader backwards past the entrance,
+      // where the slider has zero width and appears to vanish. A fixed
+      // pixel length keeps scroll position and timeline time in step.
+      // 370% / 2.45 units is the original ratio, preserved exactly.
+      var PIN_PX = Math.round(TL_TOTAL * (3.70 / 2.45) * window.innerHeight);
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: section,
+          start: 'top top',
+          // Extended to fit the full post-reveal sequence:
+          //   • fade non-WORK + translate so WORK rises to the quote top
+          //   • slide 1 enters from off-screen right
+          //   • WORK slides left, then holds for the rest of the pin
+          end: '+=' + PIN_PX + 'px',
+          pin: true,
+          // Scrub is the catch-up time between where the scroll is and
+          // where the timeline has got to. At 1 a fast flick drags the
+          // playhead almost as fast as the wheel; 1.6 damps that into a
+          // glide without changing how much scroll any beat costs.
+          scrub: 1.6,
+          anticipatePin: 1,
+          invalidateOnRefresh: true
+        }
+      });
+
+      lineMasks.forEach(function (mask, index) {
+        const text  = mask.querySelector('.line-text');
+        const cover = mask.querySelector('.line-cover');
+        const start = index * 0.14;
+
+        // 1. Cover grows left→right: right inset 100% → 0
+        tl.to(cover,
+          { clipPath: 'inset(0 0% 0 0 round 999px)', duration: 0.34, ease: 'power3.inOut' },
+          start
+        );
+
+        // 2. Text turns on instantly while the plate is at full width
+        tl.set(text, { opacity: 1 }, start + 0.34);
+
+        // 3. Cover retracts left→right: left inset 0 → 100%
+        tl.to(cover,
+          { clipPath: 'inset(0 0 0 100% round 999px)', duration: 0.42, ease: 'power3.inOut' },
+          start + 0.34
+        );
+      });
+
+      tl.to('.quote-block__cite',
+        { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out' },
+        0.76
+      );
+
+      // ─── Post-reveal phase ────────────────────────────────────────
+      // Once the cover-plate reveal + attribution settle, continue the
+      // scroll: the whole quote travels up as one — WORK included — while
+      // every other word fades out (including the trailing "s" inside the
+      // em). Fade and travel share a position and duration, so the text
+      // hits opacity 0 exactly as WORK reaches the quote block's original
+      // top. WORK then slides left at natural size and holds.
+      const fadeTargets = [
+        '.next-section .quote-line:nth-child(1) .line-text',
+        '.next-section .quote-line:nth-child(2) .line-text',
+        '.next-section .quote-line:nth-child(3) .line-text',
+        '.next-section .quote-line:nth-child(5) .line-text',
+        '.next-section .word-other',
+        '.quote-block__cite'
+      ];
+
+      tl.to(fadeTargets, {
+        opacity: 0,
+        duration: 0.35,
+        ease: 'power2.out'
+      }, 1.32);
+
+      // Same timeline position + matching duration as the fade so the
+      // quote translates up and the words fade together — which is what
+      // makes the text reach opacity 0 at the exact moment WORK arrives.
+      // Target y carries WORK up to where the TOP of the quote block
+      // sits right now: the quote scrolls as one, WORK just happens to
+      // be the only thing still visible when it gets there.
+      tl.to('.quote-block', {
+        // Scroll-invariant: measure both boxes RELATIVE TO THE SECTION
+        // (which cancels scrollY) instead of using raw viewport tops.
+        // Raw values depend on scroll position at refresh, so on a
+        // mid-page refresh they compute a y that translates the text
+        // the wrong way.
+        y: () => {
+          const works = document.querySelector('.next-section .word-keep');
+          if (!works) return 0;
+          const sec = document.querySelector('.next-section');
+          const block = document.querySelector('.next-section .quote-block');
+          if (!sec || !block) return 0;
+          const secTop = sec.getBoundingClientRect().top;
+          const workInSection  = works.getBoundingClientRect().top - secTop;
+          const blockInSection = block.getBoundingClientRect().top - secTop;
+          // ...minus WORK_LIFT, so WORK settles above that mark and leaves
+          // headroom for the slide entering underneath, then WORK_DROP
+          // nudges it back down without touching the shared clearance.
+          return blockInSection - workInSection - WORK_LIFT + WORK_DROP;
+        },
+        duration: 0.35,
+        // power3.inOut over power2: a longer, gentler settle as WORK
+        // arrives, so the travel doesn't stop dead on its mark.
+        ease: 'power3.inOut'
+      }, 1.32);
+
+      // ─── Image accordion: entrance + scroll-driven states ───────
+      if (ACC) {
+        ACC.layout();
+        ScrollTrigger.addEventListener('refreshInit', ACC.layout);
+
+        // The whole entrance is one scrubbed 0..1 value; the module turns
+        // it into widths. ease 'none' here because the shaping lives
+        // inside the module, per sub-phase.
+        var entProxy = { p: 0 };
+        // Non-null once the entrance has handed over to its real-time
+        // finisher; while it holds a timeline the scrubbed value is ignored
+        // so scrolling on cannot fight the playback.
+        var entAuto = null;
+        ACC.setEntrance(0);
+        tl.to(entProxy, {
+          p: 1,
+          duration: ACC_IN_DUR,
+          ease: 'none',
+          onUpdate: function () { if (!entAuto) ACC.setEntrance(entProxy.p); }
+        }, ACC_IN_START);
+
+        // From the title cue on, the entrance plays out on its own clock —
+        // no further scrolling needed. ONE tween at a constant rate, not a
+        // beat per phase: the module already overlaps the stagger 0.10 into
+        // the pull, so a single linear sweep reads as one continuous motion.
+        // Chopping it into two timed beats gave them different rates and a
+        // visible speed change at the seam.
+        //
+        var ENT_PULL_END = (ACC.ENT_GROW || 0.58) + (ACC.ENT_PULL || 0.13);
+        var ENT_AUTO_SEC = 2.2;          // the whole remainder, one pace
+        // Seconds from the title cue to image 1's right edge reaching 96.
+        // Read by the sub-line, which is cued off the landing rather than
+        // off the cue, so it cannot arrive while the edge is still out.
+        var entPullSec = 0;
+        function startEntranceAuto() {
+          if (entAuto) return;
+          var v = { p: entProxy.p };
+          entPullSec = v.p < ENT_PULL_END
+            ? ENT_AUTO_SEC * (ENT_PULL_END - v.p) / (1 - v.p)
+            : 0;
+          entAuto = gsap.to(v, {
+            p: 1,
+            duration: ENT_AUTO_SEC,
+            ease: 'none',
+            onUpdate: function () { ACC.setEntrance(v.p); }
+          });
+        }
+        function stopEntranceAuto() {
+          if (!entAuto) return;
+          entAuto.kill();
+          entAuto = null;
+          ACC.setEntrance(entProxy.p);
+        }
+
+        // ── Slider title: per-letter fade-up ────────────────────────
+        // Cued to the frame the composition's left edge lands, i.e. the
+        // end of the GROW beat.
+        var updateTitle = function () {};   // assigned below if a title exists
+        var titleEl = document.querySelector('.acc-title');
+        if (titleEl) {
+          // One title per image. Index 0 is the markup's own text so the
+          // page still reads correctly with JS off.
+          var SLIDE_TITLES = [titleEl.textContent.trim(), 'teledynamics', 'slb', 'givebacks'];
+
+          var letters = [];
+          var titleAnim = null;
+
+          // ── One spec, every image ──────────────────────────────────
+          // The title and the sub-line animate identically on every image.
+          // Only their CUE differs: image one is driven by the scroll
+          // entrance, every image after it by the slide change. Both paths
+          // build from these two factories, so a change made for image one
+          // reaches all of them at once. Two copies of the numbers is how
+          // the images drift into behaving differently.
+          function titleTimeline(target, opts) {
+            return gsap.timeline(opts).to(target, {
+              opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.04
+            });
+          }
+          function subTimeline(target, opts) {
+            return gsap.timeline(opts)
+              .fromTo(target,
+                { xPercent: 105, opacity: 0 },
+                { xPercent: 0, duration: 1.0, ease: 'power3.out' }, 0)
+              .to(target, { opacity: 1, duration: 0.55, ease: 'power1.out' }, 0);
+          }
+
+          // Rebuilds the title from a string and returns its letter spans.
+          // The readable string stays on the element as aria-label, so
+          // assistive tech gets the word rather than N fragments.
+          function buildTitle(text) {
+            titleEl.setAttribute('aria-label', text);
+            titleEl.textContent = '';
+            letters = [];
+            for (var ci = 0; ci < text.length; ci++) {
+              var sp = document.createElement('span');
+              sp.setAttribute('aria-hidden', 'true');
+              sp.textContent = text.charAt(ci) === ' ' ? '\u00A0' : text.charAt(ci);
+              titleEl.appendChild(sp);
+              letters.push(sp);
+            }
+            gsap.set(letters, { opacity: 0, y: 20 });
+            return letters;
+          }
+
+          // Plays a title in with the same staggered fade-up every time,
+          // so slide two arrives exactly the way slide one did.
+          function playTitle(text) {
+            if (titleAnim) titleAnim.kill();
+            titleEl.style.opacity = 1;
+            buildTitle(text);
+            titleAnim = titleTimeline(letters);
+            return titleAnim;
+          }
+
+          // Swap on the way between images: the outgoing title is faded by
+          // trackChrome() below, and the incoming one plays its own fade-up.
+          // One line of sub-copy per image, revealed the same way each
+          // time — masked, arrow leading, right-justified to that image.
+          var SLIDE_SUBS = [
+            (document.querySelector('.acc-sub__copy') || {}).textContent || '',
+            'B2B Commerce Experience',
+            '', ''
+          ];
+          var subWrap  = document.querySelector('.acc-sub');
+          var subCopy  = document.querySelector('.acc-sub__copy');
+          var subInner = document.querySelector('.acc-sub__inner');
+
+          // One destination per image, alongside the titles and sub-lines.
+          // The anchor carries image one's href in the markup so the page
+          // still works with JS off, and index 0 reads it back rather than
+          // repeating it. Without this the anchor kept image one's href on
+          // every image, so teledynamics' line clicked through to envision.
+          // An empty entry means that image has no page yet: the line still
+          // reveals and reads, it simply is not a link.
+          var SLIDE_LINKS = [
+            (subInner && subInner.getAttribute('href')) || '',
+            'teledynamics.html', '', ''
+          ];
+          // Chrome ink per image. The behavior is identical on every image;
+          // only the value differs, because the images differ in brightness.
+          // Cream reads over envision's wood floor and is illegible over
+          // teledynamics' pale grey, so the ink travels with the image the
+          // same way its title and sub-line do.
+          var SLIDE_INK = ['#DFCFB7', '#1C1310', '#DFCFB7', '#DFCFB7'];
+          function syncInk(ink) {
+            ink = ink || '#DFCFB7';
+            if (titleEl)  titleEl.style.color  = ink;
+            if (subInner) subInner.style.color = ink;
+          }
+
+          // Armed by the entrance, below. The line is only clickable when
+          // the entrance has armed it AND the current image has somewhere
+          // to go, so returning to image one restores its link.
+          var subArmed = false;
+          function syncSubLink(href) {
+            if (!subInner) return;
+            if (href) subInner.setAttribute('href', href);
+            else      subInner.removeAttribute('href');
+            if (subWrap) subWrap.classList.toggle('is-interactive', !!(subArmed && href));
+          }
+
+          function playSub(text) {
+            if (!subInner || !subCopy) return;
+            if (subAnim) subAnim.kill();
+            subCopy.textContent = text;
+            if (subWrap) subWrap.style.opacity = 1;
+            subAnim = subTimeline(subInner);
+          }
+
+          if (ACC) {
+            ACC.onSlideChange = function (idx) {
+              var nextTitle = SLIDE_TITLES[idx] || '';
+              var nextSub   = SLIDE_SUBS[idx] || '';
+              syncSubLink(SLIDE_LINKS[idx] || '');
+              syncInk(SLIDE_INK[idx]);
+              // Mute first, so a slide missing a piece cannot flash the
+              // previous slide's copy before the next frame lands.
+              if (ACC.setChromeMuted) ACC.setChromeMuted(!nextTitle, !nextSub);
+              if (nextTitle) { playTitle(nextTitle); }
+              else { titleEl.style.opacity = 0; }
+              if (nextSub) { playSub(nextSub); }
+              else if (subWrap) { subWrap.style.opacity = 0; }
+            };
+          }
+
+          buildTitle(SLIDE_TITLES[0]);
+          syncInk(SLIDE_INK[0]);
+
+          // Plays in REAL TIME — it is NOT part of the scrubbed timeline.
+          // Scrubbed, it only advanced while the wheel was moving, so
+          // pausing mid-word froze it half-faded. As its own paused
+          // animation it runs at its own pace once triggered, whether the
+          // reader keeps scrolling, scrolls fast, or stops dead.
+          //
+          // Each letter's duration (0.5) is far longer than the step
+          // between them (0.04), so many are in motion at once — that
+          // overlap is what makes it one smooth fade-up rather than a
+          // typewriter.
+          titleAnim = titleTimeline(letters, { paused: true });
+
+          // Fires the moment the composition's left edge lands, and rewinds
+          // if the reader scrolls back before that point so it can play
+          // again on the way down.
+          // Cued to the moment the slider's left edge HITS its mark.
+          // TITLE_LAND_TOL is the distance from that mark that counts as
+          // hit. 3px, not 0: the grow ease approaches its endpoint
+          // asymptotically, so the last fraction of a pixel costs ~100px of
+          // scroll. 0 fires at the formula's endpoint (t 2.62); 3 fires
+          // when the edge has actually arrived on 96 (t 2.535).
+          var TITLE_LAND_TOL = 3;
+          var titleP = ACC.entranceProgressForLeft
+            ? ACC.entranceProgressForLeft(ACC.WORK_LAND_X + TITLE_LAND_TOL)
+            : ACC_GROW_SHARE;
+          var TITLE_CUE  = ACC_IN_START + titleP * ACC_IN_DUR;
+          var titleShown = false;
+          updateTitle = function () {
+            var past = tl.time() >= TITLE_CUE;
+            if (past && !titleShown) {
+              titleShown = true;
+              titleAnim.play();
+              startEntranceAuto();
+              startSub();
+            } else if (!past && titleShown) {
+              titleShown = false;
+              titleAnim.pause(0);
+              stopEntranceAuto();
+              resetSub();
+            }
+          };
+          // ── Sub-line: masked reveal, cued to the entrance completing ──
+          // Fires when image 1 is fully in place, and like the title it
+          // plays in REAL TIME rather than being scrubbed.
+          var subInner = document.querySelector('.acc-sub__inner');
+          var subAnim  = null;
+          if (subInner) {
+            // Starts fully outside the mask on the right; the wrapper's
+            // overflow clips it, so it emerges from behind image 1's right
+            // edge. The arrow leads and the sentence trails in after it.
+            // Opacity resolves faster than the slide, so it reads as a fade
+            // that settles rather than a panel sliding across.
+            subAnim = subTimeline(subInner, { paused: true });
+          }
+          // Cued off the LANDING, not off the title: it begins SUB_LEAD
+          // before image 1's right edge reaches 96, so the line is arriving
+          // as the image settles instead of appearing out at the bleed
+          // while the edge is still travelling. The reveal itself is
+          // untouched — only when it is started.
+          var interactTimer = null;
+          var subTimer = null;
+          var SUB_LEAD = 0.25;
+          var subShown = false;
+
+          function startSub() {
+            if (!subAnim || subShown) return;
+            subShown = true;
+            if (subTimer) subTimer.kill();
+            subTimer = gsap.delayedCall(
+              Math.max(0, entPullSec - SUB_LEAD), function () {
+            subAnim.play();
+            // The image only becomes interactive a second after the line
+            // starts arriving, so nothing is clickable or hoverable while
+            // the composition is still settling.
+            if (interactTimer) interactTimer.kill();
+            interactTimer = gsap.delayedCall(1, function () {
+              if (ACC.panels[0]) ACC.panels[0].classList.add('is-interactive');
+              subArmed = true;
+              var sw = document.querySelector('.acc-sub');
+              if (sw && subInner && subInner.getAttribute('href')) sw.classList.add('is-interactive');
+            });
+            });
+          }
+
+          function resetSub() {
+            if (!subShown) return;
+            subShown = false;
+            if (subTimer) { subTimer.kill(); subTimer = null; }
+            if (interactTimer) { interactTimer.kill(); interactTimer = null; }
+            if (subAnim) subAnim.pause(0);
+            if (ACC.panels[0]) ACC.panels[0].classList.remove('is-interactive');
+            subArmed = false;
+            var sw2 = document.querySelector('.acc-sub');
+            if (sw2) sw2.classList.remove('is-interactive');
+          }
+
+          tl.eventCallback('onUpdate', function () { updateTitle(); });
+        }
+
+        // Scrubbed accordion. A linear proxy is mapped through a piecewise
+        // dwell/travel curve, so scrolling interpolates the widths
+        // continuously rather than firing four disconnected animations,
+        // while still parking on each image long enough to read.
+        function dwellAt(i) { return i === 0 ? ACC_DWELL_FIRST : ACC_DWELL; }
+        var ACC_UNITS = (ACC.count - 1) * ACC_MOVE;
+        for (var di = 0; di < ACC.count; di++) ACC_UNITS += dwellAt(di);
+        var accEase   = gsap.parseEase('power2.inOut');
+
+        function accPosFromProgress(u) {
+          var x = Math.max(0, Math.min(1, u)) * ACC_UNITS;
+          for (var i = 0; i < ACC.count; i++) {
+            var d = dwellAt(i);
+            if (x <= d) return i;
+            x -= d;
+            if (i === ACC.count - 1) return i;
+            if (x <= ACC_MOVE) return i + accEase(x / ACC_MOVE);
+            x -= ACC_MOVE;
+          }
+          return ACC.count - 1;
+        }
+
+        var accProxy = { u: 0 };
+        tl.to(accProxy, {
+          u: 1,
+          duration: ACC_DUR,
+          ease: 'none',
+          onUpdate: function () { ACC.setScrollPos(accPosFromProgress(accProxy.u)); }
+        }, ACC_IN_END);
+
+        // ── Resize resilience ────────────────────────────────────────
+        // The two values above reach the module through proxy objects'
+        // onUpdate. A ScrollTrigger refresh — which EVERY window resize
+        // fires — invalidates and re-renders the timeline, but does not
+        // guarantee those onUpdate callbacks run. The module was then left
+        // holding a stale entrance of 0 while the timeline believed it had
+        // finished, so every panel collapsed to zero width and the slider
+        // simply vanished until you scrolled again.
+        //
+        // Both tweens use ease 'none', so their values are just linear
+        // functions of the timeline's own time. Re-deriving them from
+        // tl.time() after a refresh is exact, and cannot fall out of sync
+        // with the timeline the way a cached proxy value can.
+        function syncFromTimeline() {
+          var t = tl.time();
+          // Push the derived values into the MODULE only — never write back
+          // into entProxy / accProxy. Those are tween targets, and with
+          // invalidateOnRefresh GSAP re-records whatever they hold as the
+          // tween's START value. Writing an out-of-range number (a refresh
+          // at time 0 yields (0 - 1.58) / 1.793 = -0.88) rewrote the
+          // entrance tween as -0.88 -> 1, so the whole entrance ran late
+          // and compressed.
+          if (!entAuto) ACC.setEntrance((t - ACC_IN_START) / ACC_IN_DUR);  // clamps
+          ACC.setScrollPos(accPosFromProgress((t - ACC_IN_END) / ACC_DUR));
+          updateTitle();
+        }
+        ScrollTrigger.addEventListener('refresh', syncFromTimeline);
+
+        // ── Returning from a project page ───────────────────────────
+        // A project page's back link carries the slide it belongs to as
+        // "#work-<i>" (plain "#work" means the first). Landing on the
+        // section's top would drop the reader before the entrance had even
+        // started; instead jump straight to the scroll position where that
+        // slide is at rest, so they come back to the image they left from.
+        //
+        // Generic on purpose: any slide's link only needs the matching
+        // hash, no per-project wiring here.
+        function progressForSlide(i) {
+          var x = 0;
+          for (var k = 0; k < i; k++) { x += dwellAt(k) + ACC_MOVE; }
+          x += dwellAt(i) / 2;          // mid-dwell: unambiguously at rest
+          return ACC_UNITS > 0 ? x / ACC_UNITS : 0;
+        }
+
+        function scrollToSlide(i) {
+          var stp = tl.scrollTrigger;
+          if (!stp) return;
+          i = Math.max(0, Math.min(ACC.count - 1, i));
+          var t = ACC_IN_END + progressForSlide(i) * ACC_DUR;
+          var y = stp.start + (t / TL_TOTAL) * (stp.end - stp.start);
+          // 'instant' explicitly: the page sets scroll-behavior: smooth,
+          // which would otherwise animate the whole way down from the top.
+          window.scrollTo({ top: y, behavior: 'instant' });
+        }
+
+        function slideFromHash() {
+          var m = /^#work(?:-(\d+))?$/.exec(window.location.hash || '');
+          return m ? (m[1] ? parseInt(m[1], 10) : 0) : -1;
+        }
+
+        // The mirror of exitTo(): the project page closed its image
+        // upward, so the slider opens back downward from nothing.
+        //
+        // Revealed with a CLIP, not by animating the box's height. The
+        // height route fought ACC.layout(), which re-writes .acc's inset
+        // and block-size on every refresh — it clobbered the inline pins
+        // mid-animation and the restore never ran, leaving the panels
+        // stuck at an inline height. A clip touches no layout at all, and
+        // crops from the bottom exactly as the collapsing box did.
+        function playReturnReveal() {
+          if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+          var EASE = 'cubic-bezier(.65, 0, .35, 1)';
+          var DUR = 900, FADE = 450;
+          var el = ACC.el;
+
+          var a = el.animate(
+            [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)' }],
+            { duration: DUR, easing: EASE, fill: 'backwards' }
+          );
+          function clear() { try { a.cancel(); } catch (e) {} }
+          a.finished.then(clear).catch(clear);
+
+          // The chrome the exit faded out comes back as the box finishes.
+          ['.portrait-logo-anchor', '.next-section .word-keep'].forEach(function (sel) {
+            var c = document.querySelector(sel);
+            if (!c) return;
+            c.animate([{ opacity: 0 }, { opacity: 1 }],
+                      { duration: FADE, delay: DUR - FADE,
+                        easing: EASE, fill: 'both' });
+          });
+        }
+
+        var returningTo = slideFromHash();
+        if (returningTo >= 0) {
+          // After refresh, so start/end are the final measured values.
+          ScrollTrigger.refresh();
+          scrollToSlide(returningTo);
+          // Next frame: the jump above triggers a scroll update and
+          // ACC.layout(), and the reveal should start from the settled box.
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              // The scroll has landed on the slide, so the cover can go.
+              // It fades WHILE the slider clips open underneath, rather than
+              // being pulled away first, which would be the hard cut this
+              // whole mechanism exists to remove.
+              var root = document.documentElement;
+              root.classList.add('is-clearing');
+
+              // The nav's ink rides the cover back down, the mirror of the
+              // exit: it was dark over the beige, and returns to light over
+              // the same 700ms the cover takes to dissolve. Tweened inline so
+              // it still holds once .is-returning (and its CSS) is gone.
+              var navEl = document.querySelector('site-nav');
+              if (navEl && root.dataset.returnInk === '1' && window.gsap) {
+                var ink = { v: 1 };
+                window.__navInkLocked = true;
+                // Mirror of the exit's flip. Going up, the panel reached the
+                // nav LAST, so the ink changed at the end of the move. Going
+                // down it leaves the nav FIRST, so the same 260ms crossfade
+                // sits at the start of the descent instead.
+                gsap.to(ink, {
+                  v: 0, duration: 0.26, delay: 0.12, ease: 'none',
+                  onUpdate: function () { navEl.style.setProperty('--nav-over', ink.v); },
+                  onComplete: function () { window.__navInkLocked = false; }
+                });
+              }
+
+              setTimeout(function () {
+                root.classList.remove('is-returning', 'is-clearing');
+              }, 850);   // the descent ends at 120 + 680 = 800ms
+              playReturnReveal();
+            });
+          });
+        }
+      }
+
+      // WORK's exit — cued to the moment the composition starts entering.
+      // It slides left and shrinks 40% (scale 0.6) over the same span.
+      //
+      // .word-keep's transform-origin is set to its LEFT edge, so
+      // shrinking doesn't drag that edge inward: the x target stays a
+      // plain subtraction and WORK lands on WORK_LAND_X at any scale.
+      //   r.left + xOffset = WORK_LAND_X  →  xOffset = WORK_LAND_X - r.left
+      // Read at x 0 so r is the natural rect; re-evaluated on refresh.
+
+      gsap.set('.word-keep', { transformOrigin: 'left top' });
+
+      tl.to('.quote-block__text', {
+        x: function () {
+          var el = document.querySelector('.next-section .word-keep');
+          if (!el) return -296;
+          var r = el.getBoundingClientRect();
+          if (!r.width) return -296;
+          return WORK_LAND_X - r.left;
+        },
+        duration: PS_WORK_DUR,
+        ease: 'power3.out'
+      }, PS_CUE);
+
+      tl.to('.word-keep', {
+        scale: 0.28512, // 10% larger again (0.2592 x 1.1)
+        duration: PS_WORK_DUR,
+        ease: 'power3.out'
+      }, PS_CUE);
+
+      // The particle sphere fades out across WORK's move — same cue, same
+      // duration, so the backdrop clears exactly as WORK travels.
+      //
+      // fromTo, not to: the HERO timeline owns this element's opacity
+      // (0 -> 1) on a different trigger, so when this timeline is built or
+      // refreshed the sphere may still read 0. A plain .to would record
+      // that 0 as its start value and the fade would never happen — or
+      // would snap. immediateRender:false keeps it from forcing opacity 1
+      // before its own beat and fighting the hero timeline.
+      tl.fromTo('.dark-bg-sphere',
+        { opacity: 1 },
+        { opacity: 0, duration: PS_WORK_DUR, ease: 'power2.inOut', immediateRender: false },
+        PS_CUE);
+
+      // No trailing hold: the accordion's own final dwell already rests on
+      // image 4, so the pin is free to release the moment that dwell ends
+      // and the section can scroll away with the page.
+    })();
+  </script>
+
+  <!-- ─── ParticleSphere controls ──────────────────────────────────
+       The sphere runs inside the cross-origin Framer iframe, so we
+       can't poke its internals directly. The published page exposes
+       Framer's official query-parameter override contract
+       (queryParamNames / framerContractVersion 1), which means each
+       component prop is settable via ?prop=value on the iframe URL.
+       This panel rebuilds that URL (debounced) and reloads the
+       iframe on release, so the controls genuinely drive the real
+       Framer effect — no rebuilt/local sphere involved. -->
+  <style>
+    #ps-panel {
+      display: none; /* controls hidden — remove this line to show again */
+      position: fixed; right: 24px; bottom: 24px;
+      width: 360px; max-height: calc(100vh - 48px); overflow-y: auto;
+      background: #1B1B1B; color: #FFFFFF;
+      font-family: 'Inter', sans-serif; font-size: 13px;
+      padding: 22px 22px 18px; border-radius: 14px;
+      z-index: 99999; border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+    }
+    #ps-panel.collapsed .ps-content { display: none; }
+    #ps-panel header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin: -2px 0 16px; cursor: pointer; user-select: none;
+    }
+    #ps-panel header h4 { margin: 0; font-size: 15px; font-weight: 700; }
+    #ps-panel header .ps-tag { font-size: 12px; color: rgba(255,255,255,0.45); }
+    #ps-panel .ps-row {
+      display: grid; grid-template-columns: 130px 1fr;
+      align-items: center; gap: 12px; padding: 8px 0;
+    }
+    #ps-panel .ps-label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; color: rgba(255,255,255,0.92);
+    }
+    #ps-panel .ps-label::before {
+      content: '+'; width: 14px; height: 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1;
+    }
+    #ps-panel .ps-row.no-bullet .ps-label::before { content: ''; width: 0; }
+    #ps-panel .ps-control {
+      display: grid; grid-template-columns: 92px 1fr;
+      align-items: center; gap: 10px;
+    }
+    #ps-panel .ps-field {
+      height: 30px; background: #262626;
+      border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+      color: #FFFFFF; padding: 0 10px; font-family: inherit;
+      font-size: 12px; width: 100%; box-sizing: border-box; outline: none;
+    }
+    #ps-panel .ps-field:focus { border-color: rgba(255,255,255,0.25); }
+    #ps-panel input[type=range].ps-slider {
+      -webkit-appearance: none; appearance: none; width: 100%;
+      height: 4px; background: rgba(255,255,255,0.18);
+      border-radius: 2px; outline: none;
+    }
+    #ps-panel input[type=range].ps-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #FFFFFF; border: none; cursor: pointer;
+    }
+    #ps-panel input[type=range].ps-slider::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #FFFFFF; border: none; cursor: pointer;
+    }
+    #ps-panel .ps-color-field {
+      position: relative; height: 30px; background: #262626;
+      border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+      display: grid; grid-template-columns: 30px 1fr;
+      align-items: center; padding: 0 10px 0 4px; gap: 10px;
+    }
+    #ps-panel .ps-color-swatch {
+      width: 22px; height: 22px; border-radius: 4px;
+      background: #FFFFFF; border: 1px solid rgba(255,255,255,0.1);
+    }
+    #ps-panel .ps-color-text {
+      background: transparent; border: 0; color: #FFFFFF;
+      font-family: inherit; font-size: 12px; padding: 0;
+      outline: none; letter-spacing: 0.04em;
+    }
+    #ps-panel .ps-color-field input[type=color] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    #ps-panel .ps-segmented, #ps-panel .ps-toggle {
+      display: grid; background: #262626; border-radius: 6px;
+      padding: 2px; border: 1px solid rgba(255,255,255,0.06); height: 30px;
+    }
+    #ps-panel .ps-segmented { grid-template-columns: repeat(3, 1fr); }
+    #ps-panel .ps-toggle { grid-template-columns: repeat(2, 1fr); }
+    #ps-panel .ps-segmented button, #ps-panel .ps-toggle button {
+      background: transparent; border: 0; color: rgba(255,255,255,0.55);
+      font-family: inherit; font-size: 12px; font-weight: 700;
+      cursor: pointer; border-radius: 4px;
+    }
+    #ps-panel .ps-segmented button.active,
+    #ps-panel .ps-toggle button.active { background: #3D3D3D; color: #FFFFFF; }
+    #ps-panel .ps-footer {
+      display: flex; align-items: center; gap: 12px;
+      margin: 16px 0 0; padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    #ps-panel #ps-save {
+      background: #FFFFFF; color: #1B1B1B;
+      border: 0; border-radius: 6px;
+      font-family: inherit; font-size: 12px; font-weight: 700;
+      padding: 8px 18px; cursor: pointer;
+    }
+    #ps-panel #ps-save:active { transform: translateY(1px); }
+    #ps-panel .ps-save-status {
+      font-size: 11px; color: rgba(255,255,255,0.5);
+      opacity: 0; transition: opacity 0.15s;
+    }
+    #ps-panel .ps-save-status.show { opacity: 1; }
+  </style>
+
+  <div id="ps-panel">
+    <header><h4>ParticleSphere</h4><span class="ps-tag">Component</span></header>
+    <div class="ps-content"></div>
+    <div class="ps-footer">
+      <button type="button" id="ps-save">Save</button>
+      <span class="ps-save-status" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // Defaults mirror the published instance's prop sheet.
+      const State = window.__particleSphereState = {
+        particleCount: 2000,
+        particleSize:  3,
+        particleColor: '#79746B',
+        speed:         1,
+        cursorRadius:  190,
+        clickEffect:   'Scatter',     // Scatter | Color | Both
+        clickForce:    8,
+        enableTrails:  false,
+        trailLength:   20,
+        trailOpacity:  0.5
+      };
+
+      // Restore a previously-saved panel state so it survives reload.
+      // Only known keys are merged (defaults stay for anything new).
+      // v3: discards the v2 saved state (which had been Saved with
+      // trails ON, forcing trails back onto both spheres every reload).
+      // The in-code State block above is now the single source of truth;
+      // nothing writes this key (panel is hidden) so the styling is
+      // frozen and will NOT revert until these defaults are changed.
+      const PS_STORE_KEY = 'psPanelState.v3';
+      try {
+        const saved = JSON.parse(localStorage.getItem(PS_STORE_KEY) || 'null');
+        if (saved && typeof saved === 'object') {
+          Object.keys(State).forEach(function (k) {
+            if (saved[k] !== undefined) State[k] = saved[k];
+          });
+        }
+      } catch (e) { /* corrupt/unavailable storage — use defaults */ }
+
+      // Drive the REAL Framer iframe. The published page reads these
+      // as query-param overrides (Framer contract v1). Param name ==
+      // component prop name. Reload is debounced + only on release so
+      // dragging a slider doesn't thrash the iframe.
+      const iframes = Array.prototype.slice.call(
+        document.querySelectorAll('.hero-framer-sphere iframe')
+      );
+      // Param spec confirmed with the Framer project owner. Note:
+      //   • particleColor is the bare hex, NO leading '#'
+      //   • the trails toggle param is `trails` = 1 | 0
+      //     (not enableTrails / true|false)
+      //   • clickEffect is lowercase: scatter | color | both
+      const baseSrc = 'https://tactical-encounter-097405.framer.app/';
+      let applyTimer = null;
+      function buildUrl(hex) {
+        const qs = new URLSearchParams();
+        qs.set('particleCount', String(Math.round(State.particleCount)));
+        qs.set('particleSize',  String(State.particleSize));
+        qs.set('particleColor', (hex || State.particleColor).replace('#', ''));
+        qs.set('speed',         String(State.speed));
+        qs.set('cursorRadius',  String(Math.round(State.cursorRadius)));
+        qs.set('clickEffect',   State.clickEffect.toLowerCase());
+        qs.set('clickForce',    String(Math.round(State.clickForce)));
+        qs.set('trails',        State.enableTrails ? '1' : '0');
+        qs.set('trailLength',   String(Math.round(State.trailLength)));
+        qs.set('trailOpacity',  String(State.trailOpacity));
+        return baseSrc + '?' + qs.toString();
+      }
+      // Hero sphere loader (colour = the Particle Color control).
+      let _loadedColor = null;
+      function loadColor(hex, immediate) {
+        if (hex === _loadedColor) return;
+        _loadedColor = hex;
+        clearTimeout(applyTimer);
+        applyTimer = setTimeout(function () {
+          const url = buildUrl(hex);
+          iframes.forEach(function (f) { if (f.src !== url) f.src = url; });
+        }, immediate ? 0 : 350);
+      }
+      // Dark-background sphere loader. FIXED #40332D (its architectural
+      // role) but shares EVERY other panel param with the hero sphere,
+      // so the controller drives both. Its own debounce/guard.
+      const darkIframes = Array.prototype.slice.call(
+        document.querySelectorAll('.dark-bg-sphere iframe')
+      );
+      const DARK_SPHERE_COLOR = '#40332D';
+      let darkTimer = null, _loadedDarkUrl = null;
+      function loadDark(immediate) {
+        const url = buildUrl(DARK_SPHERE_COLOR);
+        if (url === _loadedDarkUrl) return;
+        _loadedDarkUrl = url;
+        clearTimeout(darkTimer);
+        darkTimer = setTimeout(function () {
+          darkIframes.forEach(function (f) { if (f.src !== url) f.src = url; });
+        }, immediate ? 0 : 350);
+      }
+      // Reload BOTH spheres with the current panel params. Runs ONLY on
+      // a deliberate panel change or once at page load — NEVER on
+      // scroll (scroll is opacity-only, handled in the GSAP timeline).
+      // Hero keeps its Particle Color; dark stays #40332D.
+      function apply(immediate) {
+        _loadedColor = null;                       // hero: rebuild for params
+        loadColor(State.particleColor, immediate);
+        _loadedDarkUrl = null;                     // dark: rebuild for params
+        loadDark(immediate);
+      }
+
+      const panel   = document.getElementById('ps-panel');
+      const content = panel.querySelector('.ps-content');
+
+      function sliderRow(o) {
+        const row = document.createElement('div');
+        row.className = 'ps-row';
+        row.innerHTML =
+          '<div class="ps-label">' + o.label + '</div>' +
+          '<div class="ps-control">' +
+            '<input class="ps-field ps-f" type="text">' +
+            '<input class="ps-slider" type="range">' +
+          '</div>';
+        const field  = row.querySelector('.ps-f');
+        const slider = row.querySelector('.ps-slider');
+        slider.min = o.min; slider.max = o.max; slider.step = o.step;
+        slider.value = State[o.key];
+        field.value  = o.fmt(State[o.key]);
+        slider.addEventListener('input', function () {
+          State[o.key] = (o.int ? parseInt(slider.value, 10) : parseFloat(slider.value));
+          field.value  = o.fmt(State[o.key]);
+        });
+        slider.addEventListener('change', function () { apply(); });
+        field.addEventListener('change', function () {
+          const v = parseFloat(field.value);
+          if (!isNaN(v)) {
+            State[o.key] = v; slider.value = v; field.value = o.fmt(v); apply(true);
+          } else { field.value = o.fmt(State[o.key]); }
+        });
+        return row;
+      }
+      function colorRow(o) {
+        const row = document.createElement('div');
+        row.className = 'ps-row';
+        row.innerHTML =
+          '<div class="ps-label">' + o.label + '</div>' +
+          '<div class="ps-control" style="grid-template-columns:1fr">' +
+            '<div class="ps-color-field">' +
+              '<span class="ps-color-swatch"></span>' +
+              '<input class="ps-color-text" type="text">' +
+              '<input type="color">' +
+            '</div></div>';
+        const sw = row.querySelector('.ps-color-swatch');
+        const tx = row.querySelector('.ps-color-text');
+        const pk = row.querySelector('input[type=color]');
+        function set(hex, push) {
+          State[o.key] = hex;
+          sw.style.background = hex;
+          tx.value = hex.replace('#','').toUpperCase();
+          pk.value = hex;
+          if (!push) return;
+          apply(true);
+        }
+        set(State[o.key], false);
+        pk.addEventListener('input', function () { set(pk.value, true); });
+        tx.addEventListener('change', function () {
+          const v = tx.value.trim().replace('#','');
+          if (/^[0-9a-f]{6}$/i.test(v)) set('#' + v.toUpperCase(), true);
+          else tx.value = State[o.key].replace('#','').toUpperCase();
+        });
+        return row;
+      }
+      function segRow(o) {
+        const row = document.createElement('div');
+        row.className = 'ps-row no-bullet';
+        row.innerHTML =
+          '<div class="ps-label">' + o.label + '</div><div class="ps-segmented"></div>';
+        const seg = row.querySelector('.ps-segmented');
+        o.options.forEach(function (opt) {
+          const b = document.createElement('button');
+          b.textContent = opt;
+          if (State[o.key] === opt) b.classList.add('active');
+          b.addEventListener('click', function () {
+            State[o.key] = opt;
+            seg.querySelectorAll('button').forEach(function (x){ x.classList.remove('active'); });
+            b.classList.add('active');
+            apply(true);
+          });
+          seg.appendChild(b);
+        });
+        return row;
+      }
+      function toggleRow(o) {
+        const row = document.createElement('div');
+        row.className = 'ps-row';
+        row.innerHTML =
+          '<div class="ps-label">' + o.label + '</div><div class="ps-toggle"></div>';
+        const wrap = row.querySelector('.ps-toggle');
+        ['On','Off'].forEach(function (opt) {
+          const b = document.createElement('button');
+          b.textContent = opt;
+          if ((State[o.key] && opt === 'On') || (!State[o.key] && opt === 'Off'))
+            b.classList.add('active');
+          b.addEventListener('click', function () {
+            State[o.key] = (opt === 'On');
+            wrap.querySelectorAll('button').forEach(function (x){ x.classList.remove('active'); });
+            b.classList.add('active');
+            apply(true);
+          });
+          wrap.appendChild(b);
+        });
+        return row;
+      }
+
+      content.appendChild(sliderRow({ key:'particleCount', label:'Particle Count',
+        min:100, max:3000, step:100, int:true, fmt:function(v){return Math.round(v);} }));
+      content.appendChild(sliderRow({ key:'particleSize', label:'Particle Size',
+        min:1, max:10, step:0.5, fmt:function(v){return v+'px';} }));
+      content.appendChild(colorRow({ key:'particleColor', label:'Particle Color' }));
+      content.appendChild(sliderRow({ key:'speed', label:'Speed',
+        min:0.1, max:5, step:0.1, fmt:function(v){return (+v).toFixed(1).replace(/\.0$/,'');} }));
+      content.appendChild(sliderRow({ key:'cursorRadius', label:'Cursor Radius',
+        min:50, max:400, step:5, int:true, fmt:function(v){return Math.round(v)+'px';} }));
+      content.appendChild(segRow({ key:'clickEffect', label:'Click Effect',
+        options:['Scatter','Color','Both'] }));
+      content.appendChild(sliderRow({ key:'clickForce', label:'Click Force',
+        min:0, max:20, step:1, int:true, fmt:function(v){return Math.round(v);} }));
+      content.appendChild(toggleRow({ key:'enableTrails', label:'Enable Trails' }));
+      content.appendChild(sliderRow({ key:'trailLength', label:'Trail Length',
+        min:0, max:60, step:1, int:true, fmt:function(v){return Math.round(v);} }));
+      content.appendChild(sliderRow({ key:'trailOpacity', label:'Trail Opacity',
+        min:0, max:1, step:0.05, fmt:function(v){return (+v).toFixed(2).replace(/0$/,'').replace(/\.$/,'');} }));
+
+      panel.querySelector('header').addEventListener('click', function () {
+        panel.classList.toggle('collapsed');
+      });
+
+      // Save: persist the current State so it survives a reload.
+      // Nothing else needed — controls already apply live; this just
+      // writes the snapshot that the restore block reads on next load.
+      const saveBtn    = document.getElementById('ps-save');
+      const saveStatus = panel.querySelector('.ps-save-status');
+      let saveStatusTimer = null;
+      saveBtn.addEventListener('click', function (e) {
+        e.stopPropagation(); // don't trigger the header collapse
+        let ok = true;
+        try {
+          localStorage.setItem(PS_STORE_KEY, JSON.stringify(State));
+        } catch (err) { ok = false; }
+        saveStatus.textContent = ok ? 'Saved' : 'Save failed (storage blocked)';
+        saveStatus.classList.add('show');
+        clearTimeout(saveStatusTimer);
+        saveStatusTimer = setTimeout(function () {
+          saveStatus.classList.remove('show');
+        }, 1800);
+      });
+
+      // Push the initial state so the iframe starts in sync with the
+      // panel (this is the restored state if a save exists).
+      apply(true);
+    })();
+  </script>
+
+  <!-- Galaxy second-layer dot grid — self-contained. Ported from
+       galaxy.html's "Outer concentric sphere": a back-half lat/long
+       dot grid, no cursor, no gsap, its own renderer/loop. Renders
+       into #galaxy-dots inside the fixed dark backdrop, behind the
+       dark Framer sphere. Touches nothing else. -->
+  <script>
+    (function () {
+      if (!window.THREE) return;
+
+      function makeGalaxyDots(canvas, op) {
+      op = op || {};
+      var opDot    = op.dot    != null ? op.dot    : 0.25;   // dots alpha
+      var opLine   = op.line   != null ? op.line   : 0.25;   // grid-line alpha
+      var opAccent = op.accent != null ? op.accent : 0.185;  // accent-grid alpha
+      var w = canvas.clientWidth  || window.innerWidth;
+      var h = canvas.clientHeight || window.innerHeight;
+
+      var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(w, h, false);
+      renderer.setClearColor(0x000000, 0);
+
+      var scene  = new THREE.Scene();
+      var camera = new THREE.PerspectiveCamera(62, w / h, 0.1, 2000);
+      camera.position.set(0, 0, 310);
+
+      var group = new THREE.Group();
+      scene.add(group);
+
+      // Ring/column grid of points on a CYLINDER: constant radius at
+      // every height, height varies linearly along the y axis (was a
+      // sphere; lat now maps to height instead of polar angle).
+      var sphereRadius = 129.9;
+      var outerRadius  = sphereRadius * 8;            // cylinder radius (grid 2× larger)
+      var latSteps = 30, lonSteps = 60;   // halved → grid + accent grid 2× larger on screen
+      var count = latSteps * lonSteps;
+      var pos  = new Float32Array(count * 3);
+      var size = new Float32Array(count);
+      var wi = 0;
+      for (var lat = 0; lat < latSteps; lat++) {
+        var yU = 1 - ((lat + 0.5) / latSteps) * 2;    // +1 (top) → -1 (bottom), linear
+        for (var lon = 0; lon < lonSteps; lon++) {
+          var th = (lon / lonSteps) * Math.PI * 2;
+          pos[wi * 3]     = Math.cos(th) * outerRadius;        // constant radius
+          pos[wi * 3 + 1] = yU * outerRadius * 1.82;           // linear height, +30% on the prior +40%
+          pos[wi * 3 + 2] = Math.sin(th) * outerRadius;
+          size[wi] = 24;
+          wi++;
+        }
+      }
+      var geom = new THREE.BufferGeometry();
+      geom.addAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geom.addAttribute('size',     new THREE.BufferAttribute(size, 1));
+      geom.computeBoundingSphere();
+
+      // Crisp round-dot sprite.
+      var dc = document.createElement('canvas');
+      dc.width = dc.height = 32;
+      var dctx = dc.getContext('2d');
+      dctx.fillStyle = '#ffffff';
+      dctx.beginPath();
+      dctx.arc(16, 16, 15, 0, Math.PI * 2);
+      dctx.fill();
+      var dotMap = new THREE.CanvasTexture(dc);
+
+      var vert = [
+        'attribute float size;',
+        'varying float vWorldZ;',
+        'void main() {',
+        '  vec4 wp = modelMatrix * vec4(position, 1.0);',
+        '  vWorldZ = wp.z;',
+        '  vec4 mv = viewMatrix * wp;',
+        '  gl_PointSize = size * (350.0 / -mv.z);',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n');
+      var frag = [
+        'varying float vWorldZ;',
+        'uniform sampler2D map;',
+        'uniform vec3 baseColor;',
+        'uniform float opacity;',
+        'void main() {',
+        '  if (vWorldZ > 0.0) discard;',                 // back half only
+        '  vec4 t = texture2D(map, gl_PointCoord);',
+        '  if (t.a < 0.5) discard;',                      // crisp circle
+        '  gl_FragColor = vec4(baseColor, opacity);',
+        '}'
+      ].join('\n');
+      var mat = new THREE.ShaderMaterial({
+        uniforms: {
+          map:       { value: dotMap },
+          baseColor: { value: new THREE.Color('#46433E') },
+          opacity:   { value: opDot }
+        },
+        vertexShader: vert,
+        fragmentShader: frag,
+        transparent: true
+      });
+      var points = new THREE.Points(geom, mat);
+      points.frustumCulled = false;
+      group.add(points);
+
+      // ── Thin connecting grid: ring (lon→lon+1, wrapping) + meridian
+      // (lat→lat+1) segments between adjacent dots. Same back-half
+      // discard so it matches the dots; fainter so it reads as a
+      // subtle wireframe behind them. ─────────────────────────────
+      var segCount = latSteps * lonSteps + (latSteps - 1) * lonSteps;
+      var lpos = new Float32Array(segCount * 6);
+      var li = 0;
+      function pushSeg(a, b) {
+        lpos[li++] = pos[a * 3];     lpos[li++] = pos[a * 3 + 1]; lpos[li++] = pos[a * 3 + 2];
+        lpos[li++] = pos[b * 3];     lpos[li++] = pos[b * 3 + 1]; lpos[li++] = pos[b * 3 + 2];
+      }
+      for (var la = 0; la < latSteps; la++) {
+        for (var lo = 0; lo < lonSteps; lo++) {
+          var a = la * lonSteps + lo;
+          pushSeg(a, la * lonSteps + ((lo + 1) % lonSteps));   // ring
+          if (la < latSteps - 1) pushSeg(a, (la + 1) * lonSteps + lo); // meridian
+        }
+      }
+      var lineGeom = new THREE.BufferGeometry();
+      lineGeom.addAttribute('position', new THREE.BufferAttribute(lpos, 3));
+      lineGeom.computeBoundingSphere();
+      var lineVert = [
+        'varying float vWorldZ;',
+        'void main() {',
+        '  vec4 wp = modelMatrix * vec4(position, 1.0);',
+        '  vWorldZ = wp.z;',
+        '  gl_Position = projectionMatrix * viewMatrix * wp;',
+        '}'
+      ].join('\n');
+      var lineFrag = [
+        'varying float vWorldZ;',
+        'uniform vec3 baseColor;',
+        'uniform float opacity;',
+        'void main() {',
+        '  if (vWorldZ > 0.0) discard;',          // back half only
+        '  gl_FragColor = vec4(baseColor, opacity);',
+        '}'
+      ].join('\n');
+      var lineMat = new THREE.ShaderMaterial({
+        uniforms: {
+          baseColor: { value: new THREE.Color('#46433E') },
+          opacity:   { value: opLine }
+        },
+        vertexShader: lineVert,
+        fragmentShader: lineFrag,
+        transparent: true
+      });
+      var lines = new THREE.LineSegments(lineGeom, lineMat);
+      lines.frustumCulled = false;
+      lines.renderOrder = -1;                     // draw behind the dots
+      group.add(lines);
+
+      // ── Accent grid: every 4th row gets a doubled (2-line) ring,
+      // every 4th column a doubled meridian — a major/minor grid look
+      // over the fine grid. Same cylinder math + back-half discard. ──
+      function nodePos(la, lo, dyOff, dThOff) {
+        var yU = 1 - ((la + 0.5) / latSteps) * 2;
+        var y  = yU * outerRadius * 1.82 + dyOff;
+        var th = (lo / lonSteps) * Math.PI * 2 + dThOff;
+        return [Math.cos(th) * outerRadius, y, Math.sin(th) * outerRadius];
+      }
+      var rowGap = (2 / latSteps) * outerRadius * 1.82;      // one row gap (y)
+      var colGap = (2 * Math.PI / lonSteps);                 // one column gap (theta)
+      var accD = rowGap * 0.25;   // flank offset: rings above & below (centred on oy)
+      var accT = colGap * 0.25;   // flank offset: meridians left & right (centred on ot)
+      var acc = [];
+      function seg(p, q) { acc.push(p[0],p[1],p[2], q[0],q[1],q[2]); }
+      // every 4th row → ONE ring (every-other accent line removed).
+      // oy = -0.5*rowGap (was +0.5*rowGap) shifts the whole accent
+      // stack down by one main grid block so the first/last accents
+      // sit symmetrically inset from the top/bottom of the cylinder.
+      for (var ar = 0; ar < latSteps; ar += 4) {
+        var oy = -0.5 * rowGap;
+        for (var rl = 0; rl < lonSteps; rl++) {
+          // accent ring + one flanking ring above and one below (centred on oy)
+          seg(nodePos(ar, rl, oy, 0),        nodePos(ar, (rl + 1) % lonSteps, oy, 0));
+          seg(nodePos(ar, rl, oy + accD, 0), nodePos(ar, (rl + 1) % lonSteps, oy + accD, 0));
+          seg(nodePos(ar, rl, oy - accD, 0), nodePos(ar, (rl + 1) % lonSteps, oy - accD, 0));
+          // vertical divider, one row tall, centred in each column
+          // cell. Skip where it would land on a long accent meridian
+          // (those columns, rl % 4 === 0) so it doesn't double over it.
+          if (rl % 4 !== 0) {
+            // divider + one flanking divider left and one right (centred)
+            seg(nodePos(ar, rl, oy + rowGap * 0.5, colGap * 0.5),
+                nodePos(ar, rl, oy - rowGap * 0.5, colGap * 0.5));
+            seg(nodePos(ar, rl, oy + rowGap * 0.5, colGap * 0.5 + accT),
+                nodePos(ar, rl, oy - rowGap * 0.5, colGap * 0.5 + accT));
+            seg(nodePos(ar, rl, oy + rowGap * 0.5, colGap * 0.5 - accT),
+                nodePos(ar, rl, oy - rowGap * 0.5, colGap * 0.5 - accT));
+          }
+        }
+      }
+      // every 4th column → ONE meridian (every-other accent line
+      // removed), centred in its first 2-column half.
+      for (var ac = 0; ac < lonSteps; ac += 4) {
+        var ot = 0.5 * colGap;
+        for (var cl = 0; cl < latSteps - 1; cl++) {
+          // accent meridian + one flanking meridian left and one right (centred on ot)
+          seg(nodePos(cl, ac, 0, ot),        nodePos(cl + 1, ac, 0, ot));
+          seg(nodePos(cl, ac, 0, ot + accT), nodePos(cl + 1, ac, 0, ot + accT));
+          seg(nodePos(cl, ac, 0, ot - accT), nodePos(cl + 1, ac, 0, ot - accT));
+          // horizontal divider, one column wide, centred in each row
+          // cell. Skip where it would land on a long accent ring.
+          // After shifting accent rings down by one main grid square
+          // (oy = -0.5*rowGap), the rings now sit at row positions
+          // cl ∈ {0,4,8,…}+0.5, so skip dividers at cl % 4 === 0.
+          if (cl % 4 !== 0) {
+            // divider + one flanking divider above and one below (centred)
+            seg(nodePos(cl, ac, -rowGap * 0.5, ot - colGap * 0.5),
+                nodePos(cl, ac, -rowGap * 0.5, ot + colGap * 0.5));
+            seg(nodePos(cl, ac, -rowGap * 0.5 + accD, ot - colGap * 0.5),
+                nodePos(cl, ac, -rowGap * 0.5 + accD, ot + colGap * 0.5));
+            seg(nodePos(cl, ac, -rowGap * 0.5 - accD, ot - colGap * 0.5),
+                nodePos(cl, ac, -rowGap * 0.5 - accD, ot + colGap * 0.5));
+          }
+        }
+      }
+      var accGeom = new THREE.BufferGeometry();
+      accGeom.addAttribute('position', new THREE.BufferAttribute(new Float32Array(acc), 3));
+      accGeom.computeBoundingSphere();
+      var accMat = new THREE.ShaderMaterial({
+        uniforms: {
+          baseColor: { value: lineMat.uniforms.baseColor.value },  // same colour
+          opacity:   { value: opAccent }
+        },
+        vertexShader: lineVert,
+        fragmentShader: lineFrag,
+        transparent: true
+      });
+      var accLines = new THREE.LineSegments(accGeom, accMat);
+      accLines.frustumCulled = false;
+      accLines.renderOrder = -1;
+      group.add(accLines);
+
+      function frame() {
+        group.rotation.y += 0.0004;    // grid rotation speed (was 0.0006)
+        renderer.render(scene, camera);
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+
+      var rt;
+      window.addEventListener('resize', function () {
+        clearTimeout(rt);
+        rt = setTimeout(function () {
+          w = canvas.clientWidth  || window.innerWidth;
+          h = canvas.clientHeight || window.innerHeight;
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h, false);
+        }, 150);
+      });
+      }
+
+      // One independent instance per canvas: the fixed dark backdrop
+      // AND a copy inside .hero-scene so the dot grid shows in the
+      // hero too (each its own renderer/loop, like galaxy.html).
+      ['galaxy-dots', 'galaxy-dots-hero'].forEach(function (id) {
+        var c = document.getElementById(id);
+        if (!c) return;
+        // The fixed dark backdrop (#170B05) needs a brighter grid than
+        // the hero copy, which keeps the original defaults.
+        makeGalaxyDots(c, id === 'galaxy-dots'
+          ? { dot: 0.45, line: 0.45, accent: 0.33 }
+          : undefined);
+      });
+    })();
+  </script>
+
+</body>
+</html>

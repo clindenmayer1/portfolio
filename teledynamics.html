@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>teledynamics — B2B Commerce Experience · Chris Lindenmayer</title>
+  <meta name="description" content="Teledynamics: a B2B commerce experience that lets telecom resellers find, price and order equipment.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="site-nav.js" defer></script>
+
+  <style>
+    /* Palette and type lifted from index.html so the two pages read as
+       one site: same Brier display face, same Inter, same cream on the
+       same near-black ground. */
+    @font-face {
+      font-family: 'Brier';
+      src: url('Support/Brier-Regular.otf') format('opentype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --ground:    #170B05;   /* page ground, matches the portfolio backdrop */
+      --cream:     #DFCFB7;   /* body + display type */
+      --cream-dim: #9A8A76;   /* secondary type */
+      --terra:     #C64921;   /* accent, matches SYSTEMS */
+      --rule:      #33241B;   /* hairlines */
+      /* Fixed, not vw-based, so the text sits on an exact number. Narrow
+         viewports override this in the media query below. The nav does NOT
+         use this — it has its own offsets matching index.html. */
+      --page-pad:  96px;
+      /* The text column is now the fixed quantity and the image is sized
+         from what's LEFT, rather than the other way round. That inverts the
+         old relationship, where growing the image simply advanced it over
+         the copy. Everything is in vw, so it all scales with the window.
+         The +16px is the image's deliberate right bleed. */
+      --col-w:     clamp(280px, 26vw, 380px);
+      /* Deliberately a fixed 96px, NOT --page-pad: the image's size is
+         independent of the text's left margin, so nudging the copy doesn't
+         resize the image. */
+      --shot-reserve: 96px;
+      /* The image's LEFT edge is the fixed quantity now, not its width:
+         it sits --shot-left from the viewport edge and runs to the bleed
+         on the right, so it widens with the window instead of capping. The
+         brief's copy hangs from the same number, giving the hero and the
+         body one shared spine. */
+      /* DERIVED from the gutter, not a literal. As a hard 500px the gap
+         between the text column and the image was whatever was left over
+         (24px at 1600, and it drifted with --col-w's clamp at other widths,
+         so no single number described it). Expressing the spine as
+         column + gutter makes --hero-gut the real control again: the gap is
+         exactly that value at every width, and --col-w can move without
+         dragging it. */
+      --hero-gut:  64px;   /* gutter between the text column and the image */
+      --shot-left: calc(var(--page-pad) + var(--col-w) + var(--hero-gut));
+      --shot-w:    calc(100vw + 16px - var(--shot-left));
+      /* <site-nav> is position:fixed and therefore out of flow, so the
+         hero starts at the top of the viewport and nothing needs to be
+         subtracted. Kept as a variable because the hero and the image top
+         are both expressed in terms of it. */
+      --nav-h:     0px;
+      /* The brief's left rail. The eyebrow labels live here, so the
+         content column starts at page-pad + rail-w + rail-gap and every
+         row of the brief shares that one spine. */
+      --rail-w:    clamp(140px, 16vw, 232px);
+      --rail-gap:  clamp(24px, 3.4vw, 64px);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--ground);
+      color: var(--cream);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+
+    /* ─── Masthead ─────────────────────────────────────────────────── */
+    .mast {
+      /* +80px on the top only, so the title and subtitle sit lower. The
+         meta column is bottom-anchored and is unaffected. */
+      padding: calc(clamp(48px, 9vh, 104px) + 80px) var(--page-pad) 0;
+      /* Everything in the masthead is confined to the column left of the
+         image, so nothing runs underneath it. Floored so it stays usable
+         when the image takes most of a narrow viewport. */
+      /* border-box sizing means max-inline-size includes the 120px
+         padding on BOTH sides — capping at --col-w left only 134px of
+         content, so the title overflowed and the subtitle wrapped to
+         four lines. Reserve the left padding, drop the right one, and the
+         content column is exactly --col-w, matching .mast__meta. */
+      padding-inline-end: 0;
+      max-inline-size: calc(var(--page-pad) + var(--col-w));
+    }
+
+    /* Taken OUT of flow deliberately. In flow its height plus margin would
+       shove the title down ~58px, undoing the mast's deliberate top
+       padding; absolute keeps the title exactly where it was placed.
+       Anchored to .hero, NOT .mast — .mast__meta already measures from the
+       hero's bottom edge, so giving .mast a position would re-parent it. */
+    .mast__back {
+      position: absolute;
+      inset-block-start: calc(clamp(48px, 9vh, 104px) + 20px);
+      inset-inline-start: var(--page-pad);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--cream-dim);
+      text-decoration: none;
+      transition: color 200ms ease;
+      z-index: 3;
+    }
+    .mast__back:hover { color: var(--cream); }
+    .mast__back svg { inline-size: 18px; block-size: 18px; }
+    .mast__title {
+      /* The letters are split into inline-block spans for the intro, which
+         makes the word breakable — inside the ~380px text column every
+         letter wrapped onto its own line. Keep it on one line. */
+      white-space: nowrap;
+    }
+    /* Word spans for the line-by-line fade. inline-block so they can be
+       transformed; the spaces between them stay real text nodes, so the
+       line breaks are exactly where the browser would have put them. */
+    .ln-w { display: inline-block; will-change: transform, opacity; }
+
+    .mast__title span {
+      display: inline-block;      /* so each letter can be transformed */
+      will-change: transform, opacity;
+    }
+    /* Hidden until the intro runs; .no-js guards against them never
+       appearing if the script fails. */
+    .js .mast__sub,
+    .js .mast__meta { opacity: 0; }
+
+    .mast__title {
+      /* Above the image. .shot is absolutely positioned and comes after
+         the masthead in the DOM, so without this it paints on top. */
+      position: relative;
+      z-index: 2;
+      font-family: 'Brier', 'Inter', sans-serif;
+      font-weight: 400;                 /* Brier ships 400 only */
+      /* Sized to FIT the text column: at 148px "envision" measured 536px
+         against a 374px column, so it ran across the image. */
+      /* teledynamics is half again as long as envision, so the same
+         clamp ran it across the image. Sized to fit the SAME column. */
+      font-size: clamp(26px, 4.2vw, 60px);
+      line-height: 1;
+      margin: 0 0 20px;
+    }
+    .mast__sub {
+      font-size: clamp(18px, 1.7vw, 24px);
+      line-height: 1.45;
+      max-width: 34ch;
+      margin: 0;
+      color: var(--cream);
+    }
+    /* Stacked as a column, left aligned, in the space beside the image —
+       and anchored 96px up from the BOTTOM OF THE VIEWPORT rather than
+       flowing under the subtitle. Taken out of flow so the masthead no
+       longer stretches .hero past 100vh; that keeps the hero's bottom edge
+       and the viewport's bottom edge the same line, which is what this
+       offset is measured from. */
+    .mast__meta {
+      position: absolute;
+      inset-block-end: 96px;
+      inset-inline-start: var(--page-pad);
+      inline-size: var(--col-w);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 20px;
+      margin: 0;
+      text-align: left;
+    }
+    .mast__meta div { min-inline-size: 0; }
+    .mast__meta dt {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      margin: 0 0 6px;
+    }
+    .mast__meta dd { margin: 0; font-size: 16px; }
+
+    /* ─── Hero ─────────────────────────────────────────────────────
+       One viewport tall, with the masthead at the top and the image
+       anchored flush to the viewport's LEFT and BOTTOM edges. */
+    .hero {
+      position: relative;
+      /* The image bleeds past the right edge on purpose — clip that here
+         so it can't raise a horizontal scrollbar. Scoped to the hero, NOT
+         the root: overflow on <html> propagates to the viewport and kills
+         vertical scrolling with it. x-only, so the deliberate bleed below
+         the fold still shows. */
+      overflow-x: clip;
+      overflow-y: visible;
+      /* Ends exactly on the fold, so `bottom` offsets inside it are
+         measured from the viewport's bottom edge. */
+      min-block-size: calc(100vh - var(--nav-h));
+    }
+    .shot {
+      position: absolute;
+      inset-inline-end: -16px;          /* 16px past the right edge */
+      /* Pushed BELOW the fold rather than clipped. The bottom corners keep
+         their radius intact — they simply sit off-screen, so nothing is
+         cut off and no sliver of ground shows in the corners. */
+      /* Top pinned 200px down the VIEWPORT. The hero starts below the
+         sticky nav, so the nav's height comes off. With both offsets set
+         the height is the distance between them, and the image covers that
+         box rather than deriving its own height from its width. */
+      inset-block-start: calc(100px - var(--nav-h));
+      inset-block-end: -12px;
+      margin: 0;
+      inline-size: var(--shot-w);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #1C1310;
+      /* Starts closed. The intro GROWS this box downward (see the script
+         at the end of the body) with the image pinned inside, so the photo
+         is progressively uncovered rather than squashed. Height is used
+         rather than clip-path because clip-path was interpolating
+         unreliably against a large decoding image. */
+      block-size: 0;
+    }
+    /* Open state. Without this, clearing the inline height at the end of
+       the intro falls back to the closed `block-size: 0` above and the
+       image vanishes the moment the animation finishes. `auto` with both
+       block offsets set resolves to the gap between them, so the height
+       stays responsive afterwards. */
+    .shot.is-in { block-size: auto; }
+    /* The reveal itself is driven from JS via the Web Animations API — see
+       the script at the end of the body. A CSS @keyframes animation was
+       being skipped: the image is a large file, and by the time it decoded
+       and the class landed, the animation had already been resolved to its
+       end state, so it snapped straight from hidden to fully shown with no
+       frames in between. Driving it explicitly guarantees it starts from
+       the beginning at the moment we ask it to. */
+    /* cover, not auto height: the box is now defined by its two offsets,
+       and cover fills it without distorting. The box's aspect is within a
+       couple of percent of the image's, so the crop is negligible. */
+    .shot img {
+      display: block;
+      inline-size: 100%;
+      block-size: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    /* ─── Body sections ────────────────────────────────────────────── */
+    .section {
+      padding: clamp(56px, 10vh, 112px) var(--page-pad) 0;
+      max-width: 1440px;
+    }
+    .section h2 {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--terra);
+      margin: 0 0 20px;
+    }
+    .section p {
+      font-size: clamp(17px, 1.35vw, 21px);
+      line-height: 1.6;
+      max-width: 62ch;
+      margin: 0 0 18px;
+    }
+
+    /* ─── The brief ──────────────────────────────────────────
+       Two rows, the question and then the objective, sharing one alignment
+       spine with their eyebrow labels held in a left rail so they read as
+       margin notes rather than headings in the flow. The labels keep the
+       same treatment as every other section heading on the page, so the
+       rail belongs to the same system rather than introducing a new one. */
+    /* Offsets the grid so the CONTENT column — not the section box — starts
+       on --shot-left. The eyebrow rail keeps its place to the left of that
+       spine, so the labels still read as margin notes. */
+    .section--brief {
+      padding-inline-start: calc(var(--shot-left) - var(--rail-w) - var(--rail-gap));
+    }
+    .brief {
+      display: grid;
+      grid-template-columns: var(--rail-w) minmax(0, 1fr);
+      column-gap: var(--rail-gap);
+      row-gap: clamp(44px, 6vh, 80px);
+      align-items: start;
+    }
+    /* An eyebrow aligns to the first LINE of its row, not to the top of the
+       box. Against the question that means clearing the pill's own top
+       padding, or the label floats above the text it names. */
+    /* Optical top alignment with the copy each label names.
+       Grid start-aligns the BOXES, but a box's top is not where its letters
+       begin: the copy carries half-leading above its cap height and the
+       12px label carries almost none, so start-aligned boxes leave the label
+       floating high. Each label is pushed down by the difference.
+       Distance from a line box's top to the cap top is
+       half-leading + (ascender - cap height), which for Inter
+       (ascender .969, cap .727, content box 1.21em) is
+       fs x ((line-height - 1.21) / 2 + 0.242).
+       That gives 0.287 for the headline's 1.3, 0.362 for the question's
+       1.45, and 4.9px for the label itself (2.9px by the metrics, measured at
+       4.9px once rendered: uppercase with letterspacing sits slightly lower
+       in its box than the raw ascender figure predicts). Written against the same clamps
+       as the copy, so the alignment holds across the whole type scale
+       instead of only at the width it was eyeballed on. */
+    .brief .brief__eyebrow {
+      margin: 0;
+      padding-block-start: calc(0.287 * clamp(26px, 2.9vw, 44px) - 4.9px);
+    }
+    .brief .brief__eyebrow--ask {
+      padding-block-start: calc(0.362 * clamp(18px, 1.55vw, 25px) - 4.9px);
+    }
+
+    /* The question runs unboxed. With the outline gone the horizontal
+       padding has to go with it, or the question alone would sit inset
+       from the spine every other block hangs on. */
+    .brief__ask {
+      padding: 0;
+      /* Spans the whole content column. A ch cap here resolves against the
+         block's inherited 16px, not the question's much larger size, which
+         cut the box to about half the column and stacked the text. */
+      max-inline-size: none;
+    }
+    .brief__ask p {
+      margin: 0;
+      max-inline-size: none;
+      font-size: clamp(18px, 1.55vw, 25px);
+      line-height: 1.45;
+    }
+
+    .brief__headline {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 500;
+      font-size: clamp(26px, 2.9vw, 44px);
+      line-height: 1.3;
+      text-transform: uppercase;
+      /* Measured in em, not ch or px, so the line breaks hold their shape
+         across the whole clamp rather than only at one size. */
+      max-inline-size: 21em;
+      margin: 0 0 clamp(22px, 3vh, 36px);
+    }
+    .brief__answer p { max-inline-size: 58ch; }
+
+    .brief__cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      margin-block-start: clamp(14px, 2vh, 26px);
+      padding: 17px 30px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--cream);
+      transition: border-color 240ms ease, color 240ms ease;
+    }
+    .brief__cta:hover,
+    .brief__cta:focus-visible { border-color: var(--terra); color: var(--terra); }
+    .brief__arrow { transition: transform 240ms ease; }
+    .brief__cta:hover .brief__arrow,
+    .brief__cta:focus-visible .brief__arrow { transform: translate(2px, -2px); }
+
+
+    .foot {
+      margin-block-start: clamp(72px, 12vh, 140px);
+      padding: 32px var(--page-pad) 56px;
+      /* Back on the left, the next project on the right. No rule above it:
+         the whitespace already separates the footer from the last section,
+         and the line was reading as a boundary the page does not need. */
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--page-pad);
+      color: var(--cream-dim);
+      font-size: 14px;
+    }
+    /* No rule under it. The link carries its own arrow and sits alone above
+       the fold line, so it reads as a link without one; colour on hover is
+       the affordance, matching .mast__back at the top of the page. */
+    .foot a {
+      text-decoration: none;
+      transition: color 200ms ease;
+    }
+    .foot a:hover,
+    .foot a:focus-visible { color: var(--cream); }
+
+    /* Below this the two-column split leaves the image a useless sliver,
+       so it stacks: copy first, image full width beneath it. */
+    @media (max-width: 860px) {
+      :root { --page-pad: 24px; }       /* 96px each side is untenable here */
+      .section--brief { padding-inline-start: var(--page-pad); }
+      .hero { min-block-size: auto; overflow-x: visible; }
+      .mast { max-inline-size: none; }
+      .mast__meta {
+        position: static;
+        inline-size: auto;
+        margin-block-start: 40px;
+      }
+      .shot {
+        position: static;
+        inline-size: auto;
+        block-size: auto;
+        margin: 40px var(--page-pad) 0;
+        border-radius: 12px;
+      }
+      .shot img { block-size: auto; }
+      /* The rail has no room left, so each label stacks above the block
+         it names and the row gap is carried by the labels instead. */
+      .brief { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+      .brief .brief__eyebrow {
+        margin-block: clamp(36px, 6vh, 56px) 16px;
+        padding-block-start: 0;
+      }
+      .brief .brief__eyebrow--ask { margin-block-start: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition-duration: 1ms !important; }
+      .shot { animation: none; block-size: auto; }
+    }
+  </style>
+</head>
+<body class="js">
+
+  <!-- Shared nav — same component and geometry as the homepage. -->
+  <site-nav base="index.html" autohide></site-nav>
+
+  <main>
+    <div class="hero">
+    <div class="mast">
+      <a class="mast__back" href="index.html#work-1">
+        <svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M313-440l224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/>
+        </svg>
+        All work
+      </a>
+
+      <h1 class="mast__title">teledynamics</h1>
+      <p class="mast__sub">B2B Commerce Experience</p>
+
+      <dl class="mast__meta">
+        <div><dt>Role</dt><dd>TO CONFIRM</dd></div>
+        <div><dt>Focus</dt><dd>B2B commerce, reseller experience</dd></div>
+        <div><dt>Platform</dt><dd>Web</dd></div>
+      </dl>
+    </div>
+
+    <figure class="shot">
+      <img src="Case%20Studies/Teledynamics/thumb.png"
+           alt="Teledynamics: a blue RJ45 ethernet patch cable connector">
+    </figure>
+    </div><!-- /.hero -->
+
+    <!-- The brief: the question the project set out to answer, then what was
+         built to answer it. Both rows share one alignment spine; see .brief. -->
+    <section class="section section--brief">
+      <div class="brief">
+        <h2 class="brief__eyebrow brief__eyebrow--ask">The challenge</h2>
+        <div class="brief__ask">
+          <p>PLACEHOLDER: the challenge this project set out to answer, in one
+             sentence, phrased as a question.</p>
+        </div>
+
+        <h2 class="brief__eyebrow">The objective</h2>
+        <div class="brief__answer">
+          <h3 class="brief__headline">PLACEHOLDER: the objective in a single
+            sentence, set as the display headline.</h3>
+          <p>PLACEHOLDER: two or three sentences on what was built, who it was for,
+             and what it changed, following the shape of the envision brief.</p>
+          <a class="brief__cta" href="#" target="_blank" rel="noopener">
+            View website <span class="brief__arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+
+
+  </main>
+
+  <footer class="foot">
+    <a href="index.html#work">← Back to work</a>
+  </footer>
+
+  <script>
+
+    // ─── Hero intro choreography ────────────────────────────────────
+    // Phase A  the title's letters fade up in RANDOM order, overlapping,
+    //          while the whole title sits SHIFT px to the right.
+    // Phase B  once the title is in AND the image has decoded, the title
+    //          slides left to its resting place while the image grows
+    //          downward and slides in with it — the two travel together.
+    // Phase C  only after they have landed do the subtitle and the meta
+    //          column fade up, line by line from the top, overlapping.
+    //
+    // Phase B waits on the image because the hero is a 66-frame animated
+    // WebP (4.4MB) that paints nothing until the whole file has arrived.
+    // Starting without it would open the box on empty space, and would
+    // desynchronise the title from the image it is supposed to move with.
+    (function () {
+      var SHIFT     = 220;    // px, how far right everything starts
+      var LETTER_MS = 700;    // each letter's own fade-up
+      var STEP_MS   = 60;     // gap between letters (< LETTER_MS, so they overlap)
+      var MOVE_MS   = 1500;   // phase B — title + image travel
+      var FADE_MS      = 700;   // phase C — each line's own fade-up
+      var LINE_STEP_MS = 110;   // gap between lines (< FADE_MS, so they overlap)
+
+      var EASE = 'cubic-bezier(.65, 0, .35, 1)';
+      var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      var title = document.querySelector('.mast__title');
+      var sub   = document.querySelector('.mast__sub');
+      var meta  = document.querySelector('.mast__meta');
+      var shot  = document.querySelector('.shot');
+      var img   = shot && shot.querySelector('img');
+
+      function showAll() {
+        if (sub)  sub.style.opacity = 1;
+        if (meta) meta.style.opacity = 1;
+        if (title) title.style.transform = '';
+        if (shot) { shot.classList.add('is-in'); }
+      }
+      if (reduced || !title || !shot) { showAll(); return; }
+
+      // Split the title into letters, keeping the readable string for AT.
+      var text = title.textContent.trim();
+      title.setAttribute('aria-label', text);
+      title.textContent = '';
+      var letters = [];
+      for (var i = 0; i < text.length; i++) {
+        var sp = document.createElement('span');
+        sp.setAttribute('aria-hidden', 'true');
+        sp.textContent = text.charAt(i) === ' ' ? ' ' : text.charAt(i);
+        title.appendChild(sp);
+        letters.push(sp);
+      }
+
+      // Start the title shifted right and its letters down and invisible.
+      title.style.transform = 'translateX(' + SHIFT + 'px)';
+      letters.forEach(function (l) { l.style.opacity = 0; });
+
+      // Random order — shuffle the indices, don't just reverse or stagger.
+      var order = letters.map(function (_, i) { return i; });
+      for (var j = order.length - 1; j > 0; j--) {
+        var k = Math.floor(Math.random() * (j + 1));
+        var t = order[j]; order[j] = order[k]; order[k] = t;
+      }
+
+      var phaseA = [];
+      order.forEach(function (idx, pos) {
+        var el = letters[idx];
+        phaseA.push(el.animate(
+          [{ opacity: 0, transform: 'translateY(26px)' },
+           { opacity: 1, transform: 'translateY(0)' }],
+          { duration: LETTER_MS, delay: pos * STEP_MS, easing: EASE, fill: 'both' }
+        ).finished);
+      });
+
+      // Phase B needs the artwork ready as well as the letters done.
+      var imgReady = new Promise(function (resolve) {
+        if (!img || (img.complete && img.naturalWidth)) { resolve(); return; }
+        img.addEventListener('load', resolve);
+        img.addEventListener('error', resolve);
+      });
+
+      // Guard: if either promise never settles, phase B must still run —
+      // otherwise the image stays collapsed and the copy stays invisible.
+      function withTimeout(p, ms) {
+        return Promise.race([p, new Promise(function (r) { setTimeout(r, ms); })]);
+      }
+      var phaseADone = withTimeout(Promise.all(phaseA), LETTER_MS + letters.length * STEP_MS + 400);
+      var imgDone    = withTimeout(imgReady, 8000);
+
+      Promise.all([phaseADone, imgDone]).then(function () {
+        // Measure the shot's resting box with CSS in charge. 'auto', NOT
+        // '', because the closed state is block-size:0 — clearing the
+        // inline style would just fall back to 0 and animate 0 -> 0.
+        shot.style.blockSize = 'auto';
+        var rect   = shot.getBoundingClientRect();
+        var parent = (shot.offsetParent || shot.parentNode).getBoundingClientRect();
+        var topPx  = Math.round(rect.top - parent.top);
+        var fullH  = Math.round(rect.height);
+
+        shot.style.insetBlockStart = topPx + 'px';
+        shot.style.insetBlockEnd   = 'auto';
+        shot.style.blockSize       = '0px';
+        if (img) { img.style.height = fullH + 'px'; }
+
+        var opts = { duration: MOVE_MS, easing: EASE, fill: 'forwards' };
+
+        var shotAnim = shot.animate(
+          [{ height: '0px',        transform: 'translateX(' + SHIFT + 'px)' },
+           { height: fullH + 'px', transform: 'translateX(0px)' }], opts);
+
+        // The title travels the same distance over the same span, so the
+        // two move as one.
+        title.animate(
+          [{ transform: 'translateX(' + SHIFT + 'px)' },
+           { transform: 'translateX(0px)' }], opts);
+
+        shotAnim.finished.then(function () {
+          // Open class FIRST so a height is already in force, then drop the
+          // inline overrides — the other order leaves a frame on the closed
+          // rule and the image blinks out.
+          shot.classList.add('is-in');
+          shotAnim.cancel();
+          shot.style.insetBlockStart = '';
+          shot.style.insetBlockEnd   = '';
+          shot.style.blockSize       = '';
+          shot.style.transform       = '';
+          if (img) { img.style.height = ''; }
+          title.style.transform = '';
+
+          // Phase C — the sub-copy and body text fade up LINE BY LINE,
+          // top to bottom, each line overlapping the one before.
+          //
+          // Lines are found from real layout rather than assumed: every
+          // word is wrapped, then grouped by its offsetTop. Wrapping words
+          // (not lines) means the browser still decides where the breaks
+          // fall, so re-wrapping can't shift them. Words are the unit that
+          // moves; the LINE only decides the delay.
+          function wordsByLine(el) {
+            if (!el) return [];
+            var text = el.textContent.replace(/\s+/g, ' ').trim();
+            if (!text) return [];
+            el.textContent = '';
+            var parts = text.split(' ');
+            var spans = [];
+            parts.forEach(function (word, i) {
+              var w = document.createElement('span');
+              w.className = 'ln-w';
+              w.textContent = word;
+              el.appendChild(w);
+              spans.push(w);
+              if (i < parts.length - 1) el.appendChild(document.createTextNode(' '));
+            });
+            var byTop = {};
+            spans.forEach(function (w) {
+              var top = Math.round(w.offsetTop);
+              (byTop[top] = byTop[top] || []).push(w);
+            });
+            return Object.keys(byTop)
+              .sort(function (a, b) { return a - b; })
+              .map(function (k) { return byTop[k]; });
+          }
+
+          var lines = [];
+          if (sub) lines = lines.concat(wordsByLine(sub));
+          if (meta) {
+            [].forEach.call(meta.querySelectorAll('dt, dd'), function (el) {
+              lines = lines.concat(wordsByLine(el));
+            });
+          }
+
+          // Containers become visible; the words carry the animation.
+          if (sub)  sub.style.opacity = 1;
+          if (meta) meta.style.opacity = 1;
+          lines.forEach(function (row) {
+            row.forEach(function (w) { w.style.opacity = 0; });
+          });
+
+          // Strictly top to bottom, whatever order the elements appear in.
+          lines.sort(function (a, b) {
+            return a[0].getBoundingClientRect().top - b[0].getBoundingClientRect().top;
+          });
+
+          lines.forEach(function (row, i) {
+            row.forEach(function (w) {
+              var a = w.animate(
+                [{ opacity: 0, transform: 'translateY(18px)' },
+                 { opacity: 1, transform: 'translateY(0)' }],
+                { duration: FADE_MS, delay: i * LINE_STEP_MS, easing: EASE, fill: 'both' }
+              );
+              a.finished.then(function () {
+                a.cancel();
+                w.style.opacity = '';
+                w.style.transform = '';
+              }).catch(function () { w.style.opacity = ''; });
+            });
+          });
+        }).catch(function () {});
+      });
+
+      // ─── Page exit: the intro, backwards ──────────────────────────
+      // Leaving for the slider plays the same three phases in reverse
+      // order — copy out, then the title and image travel back out to
+      // SHIFT while the image closes upward, then the letters go. The
+      // slider's own reveal picks up from there, so the two pages read as
+      // one move.
+      //
+      // Compressed by EXIT_SCALE: a faithful reverse at intro speed runs
+      // ~3.7s, which is far too long to sit through before a navigation.
+      // The shapes and distances are unchanged, only the clock.
+      var EXIT_SCALE = 0.55;
+      var xMove   = Math.round(MOVE_MS * EXIT_SCALE);
+      var xFade   = Math.round(FADE_MS * EXIT_SCALE);
+      var xLetter = Math.round(LETTER_MS * EXIT_SCALE);
+      var xLineStep   = Math.round(LINE_STEP_MS * EXIT_SCALE);
+      var xLetterStep = Math.round(STEP_MS * EXIT_SCALE);
+      var MOVE_DELAY  = 250;      // copy has started clearing by now
+      var exiting = false;
+
+      function exitToSlider(href) {
+        if (exiting) return;
+        exiting = true;
+
+        // Phase C reversed — lines out, BOTTOM to top this time.
+        var words = [].slice.call(document.querySelectorAll('.mast__sub .ln-w, .mast__meta .ln-w'));
+        if (words.length) {
+          var byTop = {};
+          words.forEach(function (w) {
+            var t = Math.round(w.getBoundingClientRect().top);
+            (byTop[t] = byTop[t] || []).push(w);
+          });
+          var rows = Object.keys(byTop)
+            .sort(function (a, b) { return b - a; })      // bottom first
+            .map(function (k) { return byTop[k]; });
+          rows.forEach(function (row, i) {
+            row.forEach(function (w) {
+              w.animate([{ opacity: 1, transform: 'translateY(0)' },
+                         { opacity: 0, transform: 'translateY(18px)' }],
+                        { duration: xFade, delay: i * xLineStep,
+                          easing: EASE, fill: 'both' });
+            });
+          });
+        } else {
+          // Intro never ran (or never reached phase C) — fade the blocks.
+          [sub, meta].forEach(function (el) {
+            if (el) el.animate([{ opacity: 1 }, { opacity: 0 }],
+                               { duration: xFade, easing: EASE, fill: 'forwards' });
+          });
+        }
+        var back = document.querySelector('.mast__back');
+        if (back) back.animate([{ opacity: 1 }, { opacity: 0 }],
+                               { duration: xFade, easing: EASE, fill: 'forwards' });
+
+        // Phase B reversed — pin the top, close the height, travel back
+        // out to SHIFT. Same measure-then-pin dance as the intro.
+        shot.style.blockSize = 'auto';
+        var rect   = shot.getBoundingClientRect();
+        var parent = (shot.offsetParent || shot.parentNode).getBoundingClientRect();
+        var fullH  = Math.round(rect.height);
+        shot.style.insetBlockStart = Math.round(rect.top - parent.top) + 'px';
+        shot.style.insetBlockEnd   = 'auto';
+        shot.style.blockSize       = fullH + 'px';
+        if (img) { img.style.height = fullH + 'px'; }
+
+        var opts = { duration: xMove, delay: MOVE_DELAY, easing: EASE, fill: 'forwards' };
+        var shotAnim = shot.animate(
+          [{ height: fullH + 'px', transform: 'translateX(0px)' },
+           { height: '0px',        transform: 'translateX(' + SHIFT + 'px)' }], opts);
+        title.animate(
+          [{ transform: 'translateX(0px)' },
+           { transform: 'translateX(' + SHIFT + 'px)' }], opts);
+
+        // Phase A reversed — letters out, random order again, starting
+        // partway through the travel so the two overlap.
+        var outOrder = letters.map(function (_, i) { return i; });
+        for (var q = outOrder.length - 1; q > 0; q--) {
+          var r = Math.floor(Math.random() * (q + 1));
+          var tmp = outOrder[q]; outOrder[q] = outOrder[r]; outOrder[r] = tmp;
+        }
+        outOrder.forEach(function (idx, pos) {
+          letters[idx].animate(
+            [{ opacity: 1, transform: 'translateY(0)' },
+             { opacity: 0, transform: 'translateY(26px)' }],
+            { duration: xLetter, delay: MOVE_DELAY + Math.round(xMove * 0.35) + pos * xLetterStep,
+              easing: EASE, fill: 'both' });
+        });
+
+        var go = function () { window.location.href = href; };
+        shotAnim.finished.then(go).catch(go);
+      }
+
+      // Any link back to the slider, not just the back arrow.
+      document.addEventListener('click', function (e) {
+        var link = e.target.closest && e.target.closest('a[href]');
+        if (!link) return;
+        if (!/(^|\/)index2\.html(#|$)/.test(link.getAttribute('href') || '')) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        if (reduced) return;
+        e.preventDefault();
+        exitToSlider(link.getAttribute('href'));
+      }, true);
+    })();
+  </script>
+</body>
+</html>

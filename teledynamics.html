@@ -269,7 +269,8 @@
     /* cover, not auto height: the box is now defined by its two offsets,
        and cover fills it without distorting. The box's aspect is within a
        couple of percent of the image's, so the crop is negligible. */
-    .shot img {
+    .shot img,
+    .shot video {
       display: block;
       inline-size: 100%;
       block-size: 100%;
@@ -450,6 +451,32 @@
     }
     .grow img { display: block; inline-size: 100%; block-size: auto; }
 
+    /* Two shots side by side. Both source images are exactly 2048px tall,
+       so growing each by its OWN aspect ratio (flex-grow, basis 0) lands
+       them on a common height with their widths in natural proportion —
+       a justified row. Equal 50/50 columns would have made the shorter
+       image letterbox, and object-fit: cover would have cropped a
+       screenshot, which is the one thing a screenshot cannot afford. */
+    .grow--pair {
+      display: flex;
+      align-items: stretch;
+      gap: clamp(24px, 2.8vw, 48px);
+      background: none;        /* the frame's white would show in the gap */
+      border-radius: 0;        /* each image carries its own corner now */
+      overflow: visible;
+    }
+    .grow--pair img {
+      inline-size: auto;
+      min-inline-size: 0;
+      border-radius: 12px;
+      /* Grows from its own base, so the row's baseline stays put while the
+         shots come up. JS drives the scale and opacity from scroll. */
+      transform-origin: 50% 100%;
+      will-change: transform, opacity;
+    }
+    .grow--pair img:nth-child(1) { flex: 2732 1 0; }   /* 2732 x 2048 */
+    .grow--pair img:nth-child(2) { flex: 2880 1 0; }   /* 2880 x 2048 */
+
     @media (prefers-reduced-motion: reduce) {
       /* No growth: it arrives at its full size. */
       .grow { inline-size: calc(100vw - var(--page-pad) * 2); }
@@ -579,7 +606,7 @@
         margin: 40px var(--page-pad) 0;
         border-radius: 12px;
       }
-      .shot img { block-size: auto; }
+      .shot img, .shot video { block-size: auto; }
       /* The rail has no room left, so each label stacks above the block
          it names and the row gap is carried by the labels instead. */
       .brief { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
@@ -613,7 +640,7 @@
       </a>
 
       <h1 class="mast__title">teledynamics</h1>
-      <p class="mast__sub">Virtual Design Center</p>
+      <p class="mast__sub">B2B Commerce Redesign</p>
 
       <dl class="mast__meta">
         <div><dt>Role</dt><dd>Lead Product Designer</dd></div>
@@ -623,8 +650,16 @@
     </div>
 
     <figure class="shot">
-      <img src="envision/Developer%20Center/kitchen%20designs/kitchen-styles.webp"
-           alt="Envision kitchen design — white shaker cabinets with a marble waterfall island">
+      <!-- AV1 first: it carries synthesised film grain, which both shrinks the
+           file and keeps the smooth background from banding. H.264 second for
+           browsers without AV1. The poster is the first frame, so the frame is
+           filled before a byte of video arrives. -->
+      <video class="shot__video" autoplay muted loop playsinline
+             preload="metadata" poster="Case%20Studies/Teledynamics/thumb-hero-poster.jpg"
+             aria-label="A blue RJ45 ethernet patch cable, slowly rotating">
+        <source src="Case%20Studies/Teledynamics/thumb-hero.webm" type="video/webm">
+        <source src="Case%20Studies/Teledynamics/thumb-hero.mp4" type="video/mp4">
+      </video>
     </figure>
     </div><!-- /.hero -->
 
@@ -634,24 +669,23 @@
       <div class="brief">
         <h2 class="brief__eyebrow brief__eyebrow--ask">The challenge</h2>
         <div class="brief__ask">
-          <p>How do we transform an outdated, fragmented home design process into a
-             simpler, more scalable digital experience?</p>
+          <p>How do you completely redesign<br>
+             a product people already depend on?</p>
         </div>
 
         <h2 class="brief__eyebrow">The objective</h2>
         <div class="brief__answer">
-          <h3 class="brief__headline">A simpler way for homebuyers to visualize and
-            select finishes, while giving builders a lower-cost alternative to
-            in-person design centers.</h3>
-          <p>I created a white-label platform that lets
-             buyers explore finishes, visualize their selections, and move through
-             the customization process remotely. For builders, it creates a more
-             efficient alternative to costly in-person design centers. A scalable
-             design system and token architecture make it possible to support
-             different brands without rebuilding the experience from scratch.</p>
-          <a class="brief__cta" href="https://envision-4tq.pages.dev"
+          <h3 class="brief__headline">A modern B2B storefront that makes complex
+            purchasing simple, without disrupting what already works.</h3>
+          <p>Teledynamics had an established customer base of professional buyers
+             who rely on the platform to purchase office supplies, networking
+             equipment, electronics, and more for businesses of all sizes. The
+             experience needed a major overhaul, but starting over wasn't an
+             option. We had to modernize it without disrupting the workflows
+             customers already depended on.</p>
+          <a class="brief__cta" href="https://www.teledynamics.com/"
              target="_blank" rel="noopener">
-            View website <span class="brief__arrow" aria-hidden="true">↗</span>
+            View live site <span class="brief__arrow" aria-hidden="true">↗</span>
           </a>
         </div>
       </div>
@@ -661,9 +695,11 @@
 
     <!-- The product itself, growing into the page as it rises. -->
     <section class="growsec">
-      <figure class="grow">
-        <img src="envision/Developer%20Center/kitchen%20designs/design%20center.png"
-             alt="The Envision design center: a kitchen rendering beside panels for choosing cabinets, countertops and flooring">
+      <figure class="grow grow--pair">
+        <img src="Case%20Studies/Teledynamics/Home2.jpg"
+             alt="The Teledynamics marketing site: a hero promoting forty years as a B2B partner over a photograph of network hardware">
+        <img src="Case%20Studies/Teledynamics/Home.jpg"
+             alt="The Teledynamics storefront: a customer dashboard with favourited products, promotions and recent orders">
       </figure>
     </section>
 
@@ -764,8 +800,8 @@
   </main>
 
   <footer class="foot">
-    <a href="index.html#work">← Back to work</a>
-    <a href="teledynamics.html">Teledynamics →</a>
+    <a href="envision.html">← Envision</a>
+    <a href="slb.html">SLB →</a>
   </footer>
 
   <script>
@@ -1123,13 +1159,37 @@
       // p = 0 when the top edge is LEAD below the fold, 1 when it reaches
       // END down the viewport. The span is the distance between those two
       // points, so moving END re-times the growth without touching LEAD.
-      function targetWidth(fig) {
+      function progress(fig) {
         var vh = window.innerHeight;
         var top = fig.getBoundingClientRect().top;
         var p = (vh * (1 + LEAD) - top) / (vh * (1 + LEAD - END));
-        p = p < 0 ? 0 : p > 1 ? 1 : p;
+        return p < 0 ? 0 : p > 1 ? 1 : p;
+      }
+      function targetWidth(fig) {
         var from = startWidth(fig), to = fullWidth();
-        return from + (to - from) * ease(p);
+        return from + (to - from) * ease(progress(fig));
+      }
+
+      // A PAIR grows one shot after the other rather than as a single block.
+      // Both take their slice from the SAME progress, offset by STEP, so
+      // the second is already on its way before the first has finished —
+      // sequential, but overlapping rather than one-then-the-other.
+      //
+      // span is what is left after the offsets, so whatever the stagger,
+      // the last image still lands exactly at p = 1 with the container.
+      var STEP = 0.28;
+      var FROM_SCALE = 0.86;
+      function stagger(fig) {
+        if (!fig.classList.contains('grow--pair')) return;
+        var ims = [].slice.call(fig.children);
+        var p = progress(fig), span = 1 - (ims.length - 1) * STEP;
+        ims.forEach(function (im, i) {
+          var q = (p - i * STEP) / span;
+          q = q < 0 ? 0 : q > 1 ? 1 : q;
+          var e = ease(q);
+          im.style.transform = 'scale(' + (FROM_SCALE + (1 - FROM_SCALE) * e).toFixed(4) + ')';
+          im.style.opacity = e.toFixed(3);
+        });
       }
 
       // The rendered width CHASES that target instead of being set to it.
@@ -1152,18 +1212,28 @@
           cur += (t - cur) * CHASE;
           if (Math.abs(t - cur) < 0.3) cur = t;        // settle, stop chasing
           fig.style.inlineSize = (Math.round(cur * 10) / 10) + 'px';
+          stagger(fig);
           if (cur !== t) raf = requestAnimationFrame(frame);
         }
         cur = targetWidth(fig);
         fig.style.inlineSize = (Math.round(cur * 10) / 10) + 'px';
+        stagger(fig);
         return {
-          kick:  function () { if (!raf) raf = requestAnimationFrame(frame); },
+          // The width chase settles and stops, but the per-image stagger is
+          // read straight off scroll position, so it has to keep updating
+          // after the container has stopped moving.
+          kick:  function () { stagger(fig); if (!raf) raf = requestAnimationFrame(frame); },
           reset: function () { cur = null; }
         };
       }
 
       if (reduce) {
-        [].forEach.call(figs, function (f) { f.style.inlineSize = fullWidth() + 'px'; });
+        [].forEach.call(figs, function (f) {
+          f.style.inlineSize = fullWidth() + 'px';
+          [].forEach.call(f.children, function (im) {
+            im.style.transform = 'none'; im.style.opacity = 1;
+          });
+        });
         return;
       }
       var wired = [].map.call(figs, wire);

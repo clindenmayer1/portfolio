@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>envision — Virtual Design Center · Chris Lindenmayer</title>
+  <title>slb · Chris Lindenmayer</title>
   <meta name="description" content="Envision — a virtual design center that lets homebuyers configure and visualise their new home's finishes before it is built.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -269,7 +269,8 @@
     /* cover, not auto height: the box is now defined by its two offsets,
        and cover fills it without distorting. The box's aspect is within a
        couple of percent of the image's, so the crop is negligible. */
-    .shot img {
+    .shot img,
+    .shot video {
       display: block;
       inline-size: 100%;
       block-size: 100%;
@@ -579,7 +580,7 @@
         margin: 40px var(--page-pad) 0;
         border-radius: 12px;
       }
-      .shot img { block-size: auto; }
+      .shot img, .shot video { block-size: auto; }
       /* The rail has no room left, so each label stacks above the block
          it names and the row gap is carried by the labels instead. */
       .brief { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
@@ -605,15 +606,15 @@
   <main>
     <div class="hero">
     <div class="mast">
-      <a class="mast__back" href="index.html#work-0">
+      <a class="mast__back" href="index.html#work-2">
         <svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true" focusable="false">
           <path d="M313-440l224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/>
         </svg>
         All work
       </a>
 
-      <h1 class="mast__title">envision</h1>
-      <p class="mast__sub">Virtual Design Center</p>
+      <h1 class="mast__title">slb</h1>
+      <p class="mast__sub"></p>
 
       <dl class="mast__meta">
         <div><dt>Role</dt><dd>Lead Product Designer</dd></div>
@@ -623,8 +624,16 @@
     </div>
 
     <figure class="shot">
-      <img src="envision/Developer%20Center/kitchen%20designs/kitchen-styles.webp"
-           alt="Envision kitchen design — white shaker cabinets with a marble waterfall island">
+      <!-- AV1 first: it carries synthesised film grain, which both shrinks the
+           file and keeps the smooth background from banding. H.264 second for
+           browsers without AV1. The poster is the first frame, so the frame is
+           filled before a byte of video arrives. -->
+      <video class="shot__video" autoplay muted loop playsinline
+             preload="metadata" poster="Case%20Studies/Teledynamics/thumb-hero-poster.jpg"
+             aria-label="A blue RJ45 ethernet patch cable, slowly rotating">
+        <source src="Case%20Studies/Teledynamics/thumb-hero.webm" type="video/webm">
+        <source src="Case%20Studies/Teledynamics/thumb-hero.mp4" type="video/mp4">
+      </video>
     </figure>
     </div><!-- /.hero -->
 
@@ -634,24 +643,22 @@
       <div class="brief">
         <h2 class="brief__eyebrow brief__eyebrow--ask">The challenge</h2>
         <div class="brief__ask">
-          <p>How do we take a process built around in-person design centers and
-             turn it into a digital experience?</p>
+          <p>How do you completely redesign a product people already depend on?</p>
         </div>
 
         <h2 class="brief__eyebrow">The objective</h2>
         <div class="brief__answer">
-          <h3 class="brief__headline">A simpler way for homebuyers to visualize and
-            select finishes, while giving builders a lower-cost alternative to
-            in-person design centers.</h3>
-          <p>I created a white-label platform that lets
-             buyers explore finishes, visualize their selections, and move through
-             the customization process remotely. For builders, it creates a more
-             efficient alternative to costly in-person design centers. A scalable
-             design system and token architecture make it possible to support
-             different brands without rebuilding the experience from scratch.</p>
+          <h3 class="brief__headline">A modern B2B storefront that makes complex
+            purchasing simple, without disrupting what already works.</h3>
+          <p>Teledynamics had an established customer base of professional buyers
+             who rely on the platform to purchase office supplies, networking
+             equipment, electronics, and more for businesses of all sizes. The
+             experience needed a major overhaul, but starting over wasn't an
+             option. We had to modernize it without disrupting the workflows
+             customers already depended on.</p>
           <a class="brief__cta" href="https://envision-4tq.pages.dev"
              target="_blank" rel="noopener">
-            View website <span class="brief__arrow" aria-hidden="true">↗</span>
+            View live site <span class="brief__arrow" aria-hidden="true">↗</span>
           </a>
         </div>
       </div>
@@ -729,7 +736,7 @@
              implementation guidance, and governance in one place so the system can
              scale without losing consistency.</p>
           <a class="brief__cta"
-             href="https://envisiondesign.pages.dev"
+             href="envision-design-system/packages/developer-center/dist/index.html"
              target="_blank" rel="noopener">
             View the Design Center <span class="brief__arrow" aria-hidden="true">↗</span>
           </a>
@@ -764,8 +771,8 @@
   </main>
 
   <footer class="foot">
-    <a href="index.html#work">← Back to work</a>
-    <a href="teledynamics.html">Teledynamics →</a>
+    <a href="teledynamics.html">← Teledynamics</a>
+    <a href="givebacks.html">Givebacks →</a>
   </footer>
 
   <script>

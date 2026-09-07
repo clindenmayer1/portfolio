@@ -124,6 +124,13 @@
         opacity: 0.7;
       }
 
+      /* The DARK layer runs at full strength. At 0.7 its #4A4A44 blended
+         with the cream ground to about #7B7A73, which read as washed out
+         against the hero. The LIGHT layer keeps its 0.7 — it sits over the
+         dark backdrop, where the same softening is what is wanted. */
+      .over .brand,
+      .over .links { opacity: 1; }
+
       /* The dark layer sits on top, so only its links should be clickable
          while it is opaque; below that the light layer's take over. */
       .over[style*="opacity: 0"] a { pointer-events: none; }
